@@ -1,7 +1,7 @@
 #!ipxe
 
 :global_vars
-set base_url        http://ipxe.creekside.network/rocky
+set base_url        http://download.creekside.network/ipxe
 
 :version_menu
 menu Choose Rocky Linux Version
@@ -81,6 +81,6 @@ set region china
 goto launch
 
 :launch
-kernel ${base-rocky-url}/${version}/BaseOS/x86_64/os/images/pxeboot/vmlinuz initrd=initrd.img inst.repo=${base-rocky-url}/${version}/BaseOS/x86_64/os inst.ks=${base_url}/rocky.ks desktop=${install_type} region=${region} partition=${partition_mode}
+kernel ${base-rocky-url}/${version}/BaseOS/x86_64/os/images/pxeboot/vmlinuz initrd=initrd.img inst.repo=${base-rocky-url}/${version}/BaseOS/x86_64/os inst.ks=${base_url}/rocky/rocky.ks desktop=${install_type} region=${region} partition=${partition_mode}
 initrd ${base-rocky-url}/${version}/BaseOS/x86_64/os/images/pxeboot/initrd.img
 boot

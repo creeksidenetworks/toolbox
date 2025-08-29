@@ -159,9 +159,6 @@ done
 # disable sudo password requirement
 echo "%wheel	ALL=(ALL)	NOPASSWD: ALL" > /etc/sudoers.d/nopasswd
 
-yum install epel-release yum-utils -y   
-yum config-manager --set-enabled powertools
-
 # Update Rocky and EPEL repository baseurls to use the provided ${baseurl}
 case $region in
     "china")
@@ -169,17 +166,29 @@ case $region in
         epel_url="http://mirrors.ustc.edu.cn/epel"
         ;;
     *)
-        baseos_url=""
-        epel_url=""
+        baseos_url="http://dl.rockylinux.org/pub/rocky"
+        epel_url="http://dl.fedoraproject.org/pub/epel"
         ;;
 esac
 
 if [ -n "$baseos_url" ]; then
     # Update Rocky repos
-    for repo in /etc/yum.repos.d/Rocky-*.repo; do
+    shopt -s nocaseglob
+    for repo in /etc/yum.repos.d/Rocky*.repo; do
         sed -i -E "s%^([[:space:]]*)#?([[:space:]]*)baseurl=http.*contentdir%baseurl=${baseos_url}%" "$repo"
         sed -i 's/^mirrorlist=/#mirrorlist=/' "$repo"
     done
+    shopt -u nocaseglob
+fi
+
+yum install epel-release yum-utils -y   
+
+OS_VERS=$(cat /etc/rocky-release | awk '{print $4}' | cut -d'.' -f1)
+
+if [[ $OS_VERS == "8" ]]; then
+    yum config-manager --set-enabled powertools
+else
+    yum config-manager --set-enabled crb
 fi
 
 if [ -n "$epel_url" ]; then
