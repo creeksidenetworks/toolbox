@@ -79,6 +79,17 @@ delete_routes() {
     echo "Flushed all routes in table $GFW_ROUTING_TABLE"
 }
 
+# Process the results
+get_loss_rate() {
+    local result_file=$1
+    local loss=$(awk -F'[, ]' '/packet loss/{gsub("%","",$8); print $8}' "$result_file")
+    if [ -z "$loss" ]; then
+        echo "100"
+    else
+        echo "$loss"
+    fi
+}
+
 clean_and_exit(){
     # Clean up temp files
 
@@ -105,17 +116,6 @@ main() {
 
     # Wait for all background jobs to complete
     wait
-
-    # Process the results
-    get_loss_rate() {
-        local result_file=$1
-        local loss=$(awk -F'[, ]' '/packet loss/{gsub("%","",$8); print $8}' "$result_file")
-        if [ -z "$loss" ]; then
-            echo "100"
-        else
-            echo "$loss"
-        fi
-    }
 
     PRIMARY_LOSS=$(get_loss_rate "$PRIMARY_RESULT_FILE")
     SECONDARY_LOSS=$(get_loss_rate "$SECONDARY_RESULT_FILE")
