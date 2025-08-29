@@ -62,7 +62,7 @@ download_file() {
         rm -f $TMP_FILE
         clean_and_exit 2
     else
-        sudo mv $TMP_FILE $output_file
+        sudo cp $TMP_FILE $output_file
         sudo chmod 644 $output_file
         rm -f $TMP_FILE
     fi
@@ -161,7 +161,7 @@ ipset=/\1/'$IPSET_NAME'#g' > $CONF_TMP_FILE
 
     # Download custom dnsmasq-ipset rules
     echo "Downloading custom dnsmasq-ipset rules"
-    download_file "https://raw.githubusercontent.com/creeksidenetworks/toolbox/refs/heads/main/router/gfw/dnsmasq/dnsmasq_gfw_custom.conf" "$BASE_PATH/gfw/dnsmasq_gfw_custom.conf"
+    download_file "https://raw.githubusercontent.com/creeksidenetworks/toolbox/refs/heads/main/router/gfw/dnsmasq/dnsmasq_gfw_custom.conf" "$BASE_PATH/dnsmasq/dnsmasq_gfw_custom.conf"
 
     if [[ "$(uname -s)" == "Linux" ]]; then
         sudo systemctl restart dnsmasq
