@@ -63,6 +63,7 @@ download_file() {
         clean_and_exit 2
     else
         sudo mv $TMP_FILE $output_file
+        sudo chmod 644 $output_file
         rm -f $TMP_FILE
     fi
 }
