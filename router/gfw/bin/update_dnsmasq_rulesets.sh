@@ -83,6 +83,8 @@ main() {
     BASE_PATH=$(dirname $(dirname "$(readlink -f "$0")"))
     CONF_PATH="$BASE_PATH/dnsmasq"
 
+    echo "Configure path: $CONF_PATH"
+
     mkdir -p "$CONF_PATH"
 
     OUT_FILE="$CONF_PATH/dnsmasq_gfw_github.conf"
