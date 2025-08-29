@@ -161,7 +161,7 @@ ipset=/\1/'$IPSET_NAME'#g' > $CONF_TMP_FILE
 
     # Download custom dnsmasq-ipset rules
     echo "Downloading custom dnsmasq-ipset rules"
-    download_file "https://raw.githubusercontent.com/creeksidenetworks/dnsmasq_ipset/refs/heads/main/gfw/dnsmasq_gfw_custom.conf" "$BASE_PATH/gfw/dnsmasq_gfw_custom.conf"
+    download_file "https://raw.githubusercontent.com/creeksidenetworks/toolbox/refs/heads/main/router/gfw/dnsmasq/dnsmasq_gfw_custom.conf" "$BASE_PATH/gfw/dnsmasq_gfw_custom.conf"
 
     if [[ "$(uname -s)" == "Linux" ]]; then
         sudo systemctl restart dnsmasq
