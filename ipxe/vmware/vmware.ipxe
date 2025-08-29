@@ -1,0 +1,48 @@
+#!ipxe
+
+#set base_url        http://download.creekside.network/ipxe
+
+:version_menu
+menu Choose VMWare ESXi
+item --gap -- --------------------------------------------------------------------------
+item esxi7    VMWare ESXi 7.0U3n
+item esxi8    VMWare ESXi 8.0U3e
+item --gap -- --------------------------------------------------------------------------
+item back     Back to Main Menu
+item --gap -- --------------------------------------------------------------------------
+choose version && goto ${version}
+
+:back
+chain ${base_url}/boot.ipxe
+
+:esxi7
+set version 7.0U3n
+goto region_menu
+
+:esxi8
+set version 8.0U3e
+goto region_menu
+
+:region_menu
+menu Choose Region
+item --gap -- --------------------------------------------------------------------------
+item Global   California
+item China    China
+item --gap -- --------------------------------------------------------------------------
+item version_menu     Back to version selection
+item --gap -- --------------------------------------------------------------------------
+choose region && goto ${region}
+
+:Global
+set base_url        http://download.creekside.network/ipxe/vmware/${version}
+set region 
+goto launch
+
+:China
+set base_url        http://download.cn.creekside.network:58080/ipxe/vmware/${version}
+set country cn
+goto launch
+
+:launch
+kernel ${base_url}/efi/boot/bootx64.efi -c ${base_url}/boot.cfg
+boot
