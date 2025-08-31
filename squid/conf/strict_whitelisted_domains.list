@@ -1,0 +1,43 @@
+# ipxe boot server
+download.creekside.network
+download.cn.creekside.network
+
+# Rocky (Redhat) Linux
+dl.rockylinux.org
+mirrors.rockylinux.org
+vault.rockylinux.org
+keys.rockylinux.org
+dl.fedoraproject.org
+mirrors.fedoraproject.org
+getfedora.org
+copr-be.cloud.fedoraproject.org
+registry.redhat.io
+vault.centos.org
+registry.access.redhat.com
+
+# Google Chrome & Linux applications
+dl.google.com
+tools.google.com
+download.sublimetext.com
+packagecloud.io
+packages.microsoft.com
+fedorainfracloud.org
+packages.endpointdev.com
+
+# China mirrors
+mirrors.ustc.edu.cn
+mirrors.aliyun.com
+mirrors.tuna.tsinghua.edu.cn
+
+# docker
+.quay.io
+.docker.com
+.containerd.io
+.docker.io
+.gcr.io
+.ghcr.io
+.k8s.gcr.io
+.k8s.io
+.mcr.microsoft.com
+.docker.elastic.co
+.nvcr.io

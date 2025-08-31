@@ -1,0 +1,12 @@
+services:
+  squid:
+    image: ubuntu/squid
+    container_name: squid-proxy
+    restart: always
+    ports:
+      - "3128:3128"
+    volumes:
+      - /opt/squid/conf/squid.conf:/etc/squid/squid.conf
+      - /opt/squid/conf/strict_whitelisted_domains.list:/etc/squid/strict_whitelisted_domains.list
+      - /opt/squid/data/cache:/var/spool/squid
+      - /opt/squid/data/logs:/var/log/squid
