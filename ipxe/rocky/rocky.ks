@@ -216,13 +216,6 @@ dnf install -y cyrus-sasl cyrus-sasl-plain cyrus-sasl-ldap bc nmap-ncat p7zip p7
 mylog  "Install development tools" 
 dnf groupinstall "Development tools" -y
 
-# install docker ce
-yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-curl -s https://download.docker.com/linux/centos/docker-ce.repo -o /etc/yum.repos.d/docker-ce.repo
-yum update -y
-yum install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
-systemctl enable docker
-
 if [ $desktop = "desktop" ]; then
 
     # install xfce desktop
@@ -360,6 +353,14 @@ gpgkey=https://download.sublimetext.com/sublimehq-rpm-pub.gpg
         mylog  "Libera Office downlaod failed" 
     fi
 fi 
+
+
+# install docker ce
+yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+curl -s https://download.docker.com/linux/centos/docker-ce.repo -o /etc/yum.repos.d/docker-ce.repo
+yum update -y
+yum install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
+systemctl enable docker
 
 %end
 

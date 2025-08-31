@@ -5,12 +5,8 @@ SHELL=/bin/bash
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 DEFAULT_HOME=/volume1/homes
 DU_OPTIONS="-sh"
-BASE_PATH=$(dirname $(dirname "$(readlink -f "$0")"))
-NAS_NAME=$(hostname -s)
 
-LOG_PATH=$BASE_PATH/log
-LOG_FILE="$LOG_PATH/${NAS_NAME}.log"
-RPT_FILE="$LOG_PATH/${NAS_NAME}.rpt"
+NAS_NAME=$(hostname -s)
 
 # Function to log messages
 log_message() {
@@ -71,25 +67,45 @@ parse_args() {
     shift $((OPTIND -1))
 }
 
-bytes_to_hr() {
-    local size_bytes=$1
+kbytes_to_hr() {
+    local size_kb=$1
     local size_hr=""
 
-    #echo "Converting $size_bytes bytes to human-readable format"
-
-    if [ "$size_bytes" -ge 1099511627776 ]; then
-        size_hr=$(printf "%8d TB"  $((size_bytes/1099511627776)))
-    elif [ "$size_bytes" -ge 1073741824 ]; then
-        size_hr=$(printf "%8d GB"  $((size_bytes/1073741824)))
-    elif [ "$size_bytes" -ge 1048576 ]; then
-        size_hr=$(printf "%8d MB"  $((size_bytes/1048576)))
-    elif [ "$size_bytes" -ge 1024 ]; then
-        size_hr=$(printf "%8d KB"  $((size_bytes/1024)))
+    #echo "Converting $size_kb bytes to human-readable format"
+    if [ "$size_kb" -ge 1073741824 ]; then
+        size_hr=$(printf "%8d TB"  $((size_kb/1073741824)))
+    elif [ "$size_kb" -ge 1048576 ]; then
+        size_hr=$(printf "%8d GB"  $((size_kb/1048576)))
+    elif [ "$size_kb" -ge 1024 ]; then
+        size_hr=$(printf "%8d MB"  $((size_kb/1024)))
     else
-        size_hr=$(printf "%8d  B" $size_bytes)
+        size_hr=$(printf "%8d  KB" $size_kb)
     fi
 
     echo "$size_hr"
+}
+
+check_usage() {
+    local chk_path=$1
+
+    while read target; do
+        if [[ -z "$target" ]]; then 
+            continue
+        fi 
+
+        # Get size in bytes (fast, using stat)
+        size_kbytes=$(du -s "${chk_path}/$target"  | awk '{print $1}' 2>/dev/null || echo 0)
+
+        # Convert bytes to human-readable format
+        size_hr=$(kbytes_to_hr "$size_kbytes")
+
+        log_message "$(printf "%-30s : %-8s\n" "$target" "$size_hr")"
+
+        if [ "$size_kbytes" -ge "$THRESHOLD_BYTES" ]; then
+            printf "%-30s : %-8s\n" "$target" "$size_hr" >> "$RPT_FILE"
+            REPORT="1"
+        fi
+    done < <(find "${chk_path}" -maxdepth 1 -mindepth 1 -type d | sed "s|^${chk_path}/||" | sort -f)
 }
 
 main() {
@@ -97,6 +113,11 @@ main() {
     parse_args "$@"
 
     printf "Checking storage usage in $HOME_PATH over $THRESHOLD\n"
+
+    BASE_PATH=$(dirname $(dirname "$(readlink -f "$0")"))
+    LOG_PATH=$BASE_PATH/log
+    LOG_FILE="$LOG_PATH/${SUBJECT}.log"
+    RPT_FILE="$LOG_PATH/${SUBJECT}.rpt"
 
     today_date=$(date +"%y-%m-%d")
     REPORT="0"
@@ -112,44 +133,10 @@ main() {
     fi
 
     if [ "$LEVEL" -eq 1 ]; then
-        while read target; do
-            if [[ -z "$target" ]]; then 
-                continue
-            fi 
-
-            # Get size in bytes (fast, using stat)
-            size_bytes=$(du -s "${HOME_PATH}/$target"  | awk '{print $1}' 2>/dev/null || echo 0)
-
-            # Convert bytes to human-readable format
-            size_hr=$(bytes_to_hr "$size_bytes")
-
-            log_message "$(printf "%-30s : %-8s\n" "$target" "$size_hr")"
-
-            if [ "$size_bytes" -ge "$THRESHOLD_BYTES" ]; then
-                printf "%-30s : %-8s\n" "$target" "$size_hr" >> "$RPT_FILE"
-                REPORT="1"
-            fi
-        done < <(find "${HOME_PATH}" -maxdepth 1 -mindepth 1 -type d | sed "s|^${HOME_PATH}/||" | sort -f)
+        check_usage "$HOME_PATH"
     else
         while read l1; do
-            if [[ -z "$l1" ]]; then
-                continue
-            fi
-            while read l2; do
-                if [[ -z "$l2" ]]; then
-                    continue
-                fi
-                # Get size in bytes for L2
-                size_bytes=$(du -s "${HOME_PATH}/$l1/$l2"  | awk '{print $1}' 2>/dev/null || echo 0)
-                size_hr=$(bytes_to_hr "$size_bytes")
-
-                log_message "$(printf "%-20s/%-20s : %-8s\n" "$l1" "$l2" "$size_hr")"
-
-                if [ "$size_bytes" -ge "$THRESHOLD_BYTES" ]; then
-                    printf "%-20s/%-20s : %-8s\n" "$l1" "$l2" "$size_hr" >> "$RPT_FILE"
-                    REPORT="1"
-                fi
-            done < <(find "${HOME_PATH}/$l1" -maxdepth 1 -mindepth 1 -type d | sed "s|^${HOME_PATH}/$l1/||" | sort -f)
+            check_usage "${HOME_PATH}/$l1"
         done < <(find "${HOME_PATH}" -maxdepth 1 -mindepth 1 -type d | sed "s|^${HOME_PATH}/||" | sort -f)
     fi
 
