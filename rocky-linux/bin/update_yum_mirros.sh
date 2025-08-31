@@ -48,64 +48,68 @@ function get_choice() {
     done
 }
 
-# --- Main Script ---
+main() {
+    # --- Main Script ---
 
-REPO_DIR="/etc/yum.repos.d"
-BACKUP_DIR="${REPO_DIR}_backup_$(date +%Y-%m-%d_%H%M%S)"
+    REPO_DIR="/etc/yum.repos.d"
+    BACKUP_DIR="${REPO_DIR}_backup_$(date +%Y-%m-%d_%H%M%S)"
 
-# Check for root privileges
-if [[ $EUID -ne 0 ]]; then
-   echo "This script must be run as root or with sudo."
-   exit 1
-fi
-
-show_menu
-get_choice
-
-echo ""
-echo "Selected mirror: $MIRROR_NAME"
-echo "Starting repository update process..."
-echo ""
-
-# Create a timestamped backup directory
-echo "Backing up existing repository files to $BACKUP_DIR..."
-mkdir -p "$BACKUP_DIR"
-cp -v "$REPO_DIR"/*.repo "$BACKUP_DIR/"
-echo "Backup complete."
-echo ""
-
-# Loop through all .repo files and update them
-echo "Modifying repository configuration files..."
-for REPO_FILE in "$REPO_DIR"/*.repo; do
-    local base_name=$(basename "$REPO_FILE")
-
-    # Check if the file is a Rocky or EPEL repository (case-insensitive for 'rocky')
-    if [[ "$base_name" =~ ^([Rr]ocky|epel|epel-next|epel-testing) ]]; then
-        echo "  - Processing $base_name"
-
-        # Check if the file is an EPEL repository
-        if [[ "$base_name" =~ ^(epel|epel-next|epel-testing)\.repo$ ]]; then
-            echo "    - Detected EPEL repository. Using EPEL-specific mirrors."
-            
-            # Disable original mirrorlist/baseurl and enable our new baseurl
-            sed -i '/^mirrorlist=/s/^/#/' "$REPO_FILE"
-            sed -i '/^baseurl=/s/^/#/' "$REPO_FILE"
-            
-            # Add a new baseurl line for EPEL
-            sed -i "/\[epel\]/a baseurl=$MIRROR_EPEL_BASE" "$REPO_FILE"
-            
-        else
-            echo "    - Detected Rocky Linux repository."
-            # Use sed to replace the mirrorlist line with the chosen baseurl
-            sed -i 's|^mirrorlist=|#mirrorlist=|' "$REPO_FILE"
-            sed -i 's|^#baseurl=https://.*|baseurl='"$MIRROR_BASE"'|' "$REPO_FILE"
-        fi
-    else
-        echo "  - Skipping $base_name (not a Rocky or EPEL repository)."
+    # Check for root privileges
+    if [[ $EUID -ne 0 ]]; then
+    echo "This script must be run as root or with sudo."
+    exit 1
     fi
-    
-done
 
-echo ""
-echo "Repository files updated successfully!"
-echo "Please run 'sudo dnf makecache' to refresh your package cache."
+    show_menu
+    get_choice
+
+    echo ""
+    echo "Selected mirror: $MIRROR_NAME"
+    echo "Starting repository update process..."
+    echo ""
+
+    # Create a timestamped backup directory
+    echo "Backing up existing repository files to $BACKUP_DIR..."
+    mkdir -p "$BACKUP_DIR"
+    cp -v "$REPO_DIR"/*.repo "$BACKUP_DIR/"
+    echo "Backup complete."
+    echo ""
+
+    # Loop through all .repo files and update them
+    echo "Modifying repository configuration files..."
+    for REPO_FILE in "$REPO_DIR"/*.repo; do
+        local base_name=$(basename "$REPO_FILE")
+
+        # Check if the file is a Rocky or EPEL repository (case-insensitive for 'rocky')
+        if [[ "$base_name" =~ ^([Rr]ocky|epel|epel-next|epel-testing) ]]; then
+            echo "  - Processing $base_name"
+
+            # Check if the file is an EPEL repository
+            if [[ "$base_name" =~ ^(epel|epel-next|epel-testing)\.repo$ ]]; then
+                echo "    - Detected EPEL repository. Using EPEL-specific mirrors."
+                
+                # Disable original mirrorlist/baseurl and enable our new baseurl
+                sed -i '/^mirrorlist=/s/^/#/' "$REPO_FILE"
+                sed -i '/^baseurl=/s/^/#/' "$REPO_FILE"
+                
+                # Add a new baseurl line for EPEL
+                sed -i "/\[epel\]/a baseurl=$MIRROR_EPEL_BASE" "$REPO_FILE"
+                
+            else
+                echo "    - Detected Rocky Linux repository."
+                # Use sed to replace the mirrorlist line with the chosen baseurl
+                sed -i 's|^mirrorlist=|#mirrorlist=|' "$REPO_FILE"
+                sed -i 's|^#baseurl=https://.*|baseurl='"$MIRROR_BASE"'|' "$REPO_FILE"
+            fi
+        else
+            echo "  - Skipping $base_name (not a Rocky or EPEL repository)."
+        fi
+        
+    done
+
+    echo ""
+    echo "Repository files updated successfully!"
+    echo "Please run 'sudo dnf makecache' to refresh your package cache."
+}
+
+main "$@"
