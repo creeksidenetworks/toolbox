@@ -39,17 +39,17 @@ parse_args() {
                 # Convert threshold to bytes
                 arg=$(echo "$OPTARG" | tr '[:lower:]' '[:upper:]')
                 if [[ "$arg" =~ ^([0-9]+)(T|TB)$ ]]; then
-                    THRESHOLD_BYTES=$(( ${BASH_REMATCH[1]} * 1024 * 1024 * 1024 * 1024 ))
+                    THRESHOLD_KB=$(( ${BASH_REMATCH[1]} * 1024 * 1024 * 1024 ))
                     THRESHOLD="${BASH_REMATCH[1]}TB"
                 elif [[ "$arg" =~ ^([0-9]+)(G|GB)$ ]]; then
-                    THRESHOLD_BYTES=$(( ${BASH_REMATCH[1]} * 1024 * 1024 * 1024 ))
+                    THRESHOLD_KB=$(( ${BASH_REMATCH[1]} * 1024 * 1024 ))
                     THRESHOLD="${BASH_REMATCH[1]}GB"
                 elif [[ "$arg" =~ ^([0-9]+)$ ]]; then
-                    THRESHOLD_BYTES=$(( ${BASH_REMATCH[1]} * 1024 * 1024 * 1024 * 1024 ))
+                    THRESHOLD_KB=$(( ${BASH_REMATCH[1]} * 1024 * 1024 * 1024  ))
                     THRESHOLD="${BASH_REMATCH[1]}TB"
                 else
                     THRESHOLD="1T"
-                    THRESHOLD_BYTES=$(( 1 * 1024 * 1024 * 1024 * 1024 ))
+                    THRESHOLD_KB=$(( 1 * 1024 * 1024 * 1024 ))
                 fi
                 ;;
             d)
@@ -94,14 +94,14 @@ check_usage() {
         fi 
 
         # Get size in bytes (fast, using stat)
-        size_kbytes=$(du -s "${chk_path}/$target"  | awk '{print $1}' 2>/dev/null || echo 0)
+        size_KB=$(du -s "${chk_path}/$target"  | awk '{print $1}' 2>/dev/null || echo 0)
 
         # Convert bytes to human-readable format
-        size_hr=$(kbytes_to_hr "$size_kbytes")
+        size_hr=$(kbytes_to_hr "$size_KB")
 
         log_message "$(printf "%-30s : %-8s\n" "$target" "$size_hr")"
 
-        if [ "$size_kbytes" -ge "$THRESHOLD_BYTES" ]; then
+        if [ "$size_KB" -ge "$THRESHOLD_KB" ]; then
             printf "%-30s : %-8s\n" "$target" "$size_hr" >> "$RPT_FILE"
             REPORT="1"
         fi
