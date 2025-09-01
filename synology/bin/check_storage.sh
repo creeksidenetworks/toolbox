@@ -3,33 +3,17 @@
 # (c) 2025 Creekside Networks LLC, Jackson Tong
 SHELL=/bin/bash
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
-DEFAULT_HOME=/volume1/homes
-DU_OPTIONS="-sh"
-
-NAS_NAME=$(hostname -s)
 
 # Function to log messages
 log_message() {
     local message=$1
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
-    printf "%-10s : %s\n" "$timestamp" "$message" | sudo tee -a "$LOG_FILE" &> /dev/null
+    printf "%-10s : %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$message" | sudo tee -a "$LOG_FILE" &> /dev/null
 
-    # Ensure the log file does not exceed 1000 lines
-    line_count=$(sudo wc -l < "$LOG_FILE")
-    if [ "$line_count" -gt 1000 ]; then
-        sudo tail -n 500 "$LOG_FILE" | sudo tee "$LOG_FILE.tmp" &> /dev/null
-        sudo mv "$LOG_FILE.tmp" "$LOG_FILE"
-    fi
 }
 
 # Function to parse command line arguments
 parse_args() {
-    HOME_PATH="${DEFAULT_HOME}"
-    THRESHOLD="1T"
-    LEVEL=1
-
-    SUBJECT="$NAS_NAME"
     while getopts ":p:t:d:s:" opt; do
         case $opt in
             p)
@@ -87,6 +71,9 @@ kbytes_to_hr() {
 
 check_usage() {
     local chk_path=$1
+    local subject_report="false"
+
+    log_message "Checking storage usage in $chk_path over $THRESHOLD\n"
 
     while read target; do
         if [[ -z "$target" ]]; then 
@@ -102,6 +89,10 @@ check_usage() {
         log_message "$(printf "%-30s : %-8s\n" "$target" "$size_hr")"
 
         if [ "$size_KB" -ge "$THRESHOLD_KB" ]; then
+            if [ "$subject_report" = "false" ]; then
+                printf "\n%s\n" "$chk_path" >> "$RPT_FILE"
+                subject_report="true"
+            fi
             printf "%-30s : %-8s\n" "$target" "$size_hr" >> "$RPT_FILE"
             REPORT="1"
         fi
@@ -110,14 +101,21 @@ check_usage() {
 
 main() {
 
-    parse_args "$@"
+    HOME_PATH="/volume1/homes"
+    THRESHOLD="1T"
+    THRESHOLD_KB=$(( 1 * 1024 * 1024 * 1024 ))
+    LEVEL=1
+    SUBJECT="$(hostname -s)"
 
-    printf "Checking storage usage in $HOME_PATH over $THRESHOLD\n"
+    parse_args "$@"
 
     BASE_PATH=$(dirname $(dirname "$(readlink -f "$0")"))
     LOG_PATH=$BASE_PATH/log
     LOG_FILE="$LOG_PATH/${SUBJECT}.log"
     RPT_FILE="$LOG_PATH/${SUBJECT}.rpt"
+
+    rm -f $RPT_FILE
+    rm -f $LOG_FILE
 
     today_date=$(date +"%y-%m-%d")
     REPORT="0"
