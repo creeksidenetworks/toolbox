@@ -5,7 +5,8 @@ lang en_US.UTF-8 --addsupport=en_GB
 keyboard us
 
 # Timezone
-timezone America/Los_Angeles --utc --ntpservers=0.pool.ntp.org,1.pool.ntp.org,2.pool.ntp.org
+#timezone America/Los_Angeles --utc --ntpservers=0.pool.ntp.org,1.pool.ntp.org,2.pool.ntp.org
+timezone America/Los_Angeles --utc
 
 # disable selinux
 selinux --disabled
@@ -162,8 +163,12 @@ echo "%wheel	ALL=(ALL)	NOPASSWD: ALL" > /etc/sudoers.d/nopasswd
 # Update Rocky and EPEL repository baseurls to use the provided ${baseurl}
 case $region in
     "china")
-        baseos_url="http://mirrors.ustc.edu.cn/rocky"
-        epel_url="http://mirrors.ustc.edu.cn/epel"
+        baseos_url="http://mirror.nju.edu.cn/rocky/rockylinux"
+        epel_url="http://mirror.nju.edu.cn/rocky/epel"
+        ;;
+    "uk")
+        baseos_url="http://rockylinux.mirrorservice.org/pub/rocky"
+        epel_url="https://www.mirrorservice.org/pub/epel"
         ;;
     *)
         baseos_url="http://dl.rockylinux.org/pub/rocky"
@@ -209,7 +214,7 @@ dnf install -y ed tcpdump wget nfs-utils cifs-utils samba-client tree xterm net-
 dnf install -y openldap-clients sssd realmd oddjob oddjob-mkhomedir adcli 
 dnf install -y samba-common samba-common-tools krb5-workstation openldap-clients iperf3 rsnapshot zip 
 dnf install -y nnzip ftp autofs zsh ksh tcsh ansible cabextract fontconfig 
-dnf install -y nedit htop tar traceroute mtr pwgen ipa-admintools sssd realmd zsh ksh tcsh
+dnf install -y nedit htop tar traceroute mtr pwgen sssd realmd zsh ksh tcsh
 dnf install -y cyrus-sasl cyrus-sasl-plain cyrus-sasl-ldap bc nmap-ncat p7zip p7zip-plugins unrar 
 
 # install development tools

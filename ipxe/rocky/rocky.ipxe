@@ -8,6 +8,7 @@ menu Choose Rocky Linux Version
 item --gap -- --------------------------------------------------------------------------
 item rocky8   Rocky Linux 8
 item rocky9   Rocky Linux 9
+item rocky10   Rocky Linux 10
 item --gap -- --------------------------------------------------------------------------
 item back     Back to Main Menu
 item --gap -- --------------------------------------------------------------------------
@@ -22,6 +23,10 @@ goto desktop_menu
 
 :rocky9
 set version 9
+goto desktop_menu
+
+:rocky10
+set version 10
 goto desktop_menu
 
 :desktop_menu
@@ -63,8 +68,9 @@ goto region_menu
 :region_menu
 menu Choose Region
 item --gap -- --------------------------------------------------------------------------
-item global   Global - Official Rocky Server
-item china    China  - UTSC Mirror
+item global   US - Official Rocky Server
+item china    CN - Nanjing University Mirror
+item uk       UK - Kent University Mirror
 item --gap -- --------------------------------------------------------------------------
 item partition_menu     Back to Desktop Selection
 item --gap -- --------------------------------------------------------------------------
@@ -76,8 +82,13 @@ set region global
 goto launch
 
 :china
-set base-rocky-url  http://mirrors.ustc.edu.cn/rocky
+set base-rocky-url  http://mirror.nju.edu.cn/rocky
 set region china
+goto launch
+
+:uk
+set base-rocky-url  http://rockylinux.mirrorservice.org/pub/rocky
+set region uk
 goto launch
 
 :launch
