@@ -8,9 +8,8 @@ GFW_ROUTING_TABLE="100"
 # Log file path
 LOG_FILE="/var/log/gfw.log"
 # interface switch decision threshold
-THRESHOLD="10"
-
-
+SW_THRESHOLD="10"
+LOSS_THRESHOLD="20"
 
 # Function to parse command line arguments
 parse_args() {
@@ -27,7 +26,7 @@ parse_args() {
                 PING_COUNT="$OPTARG"
                 ;;
             t)
-                # Convert threshold to bytes
+                # target IP to ping test, default 8.8.8.8
                 PING_TARGET_IP="$OPTARG"
                 ;;
             p)
@@ -128,17 +127,26 @@ main() {
     DEFAULT_IF=$(echo "$DEFAULT_ROUTE" | grep -oP 'dev \K\S+')
 
     # Make the interface switch decision by following rules
-    if [ "$PRIMARY_LOSS" -gt "$THRESHOLD" ] && [ "$SECONDARY_LOSS" -gt "$THRESHOLD" ]; then
+    if [ "$PRIMARY_LOSS" -gt "$LOSS_THRESHOLD" ] && [ "$SECONDARY_LOSS" -gt "$LOSS_THRESHOLD" ]; then
         # If both interfaces are down, then switch to default route
         NEXT_IF="$DEFAULT_IF"
-    elif [ "$PRIMARY_LOSS" -lt "$THRESHOLD" ] && [ "$SECONDARY_LOSS" -gt "$THRESHOLD" ]; then
-        NEXT_IF=$PRIMARY_IF
-    elif [ "$PRIMARY_LOSS" -gt "$THRESHOLD" ] && [ "$SECONDARY_LOSS" -lt "$THRESHOLD" ]; then
-        NEXT_IF=$SECONDARY_IF
-    elif [ "$CURRENT_IF" = "$DEFAULT_IF" ]; then
-        NEXT_IF=$PRIMARY_IF
+    elif [ "$CURRENT_IF" = "$DEFAULT_IF" ] ; then
+        # Switch from loss to best interface
+        if [ "$PRIMARY_LOSS" -le "$SECONDARY_LOSS" ]; then
+            NEXT_IF="$PRIMARY_IF"
+        else
+            NEXT_IF="$SECONDARY_IF"
+        fi  
+    elif [ "$PRIMARY_LOSS" -lt "$SW_THRESHOLD" ] && [ "$SECONDARY_LOSS" -lt "$SW_THRESHOLD" ]; then
+        # If both interfaces are good, and current is not default, then stay
+        NEXT_IF="$CURRENT_IF"
     else
-        NEXT_IF=$CURRENT_IF
+        # At least one interface is worst thatn stay zone, switch to best interface
+        if [ "$PRIMARY_LOSS" -le "$SECONDARY_LOSS" ]; then
+            NEXT_IF="$PRIMARY_IF"
+        else
+            NEXT_IF="$SECONDARY_IF"
+        fi  
     fi
 
     if [ "$NEXT_IF" = "$CURRENT_IF" ]; then
@@ -157,7 +165,7 @@ main() {
         sudo ip route replace "$PING_TARGET_IP" dev "$SECONDARY_IF"
         clean_and_exit 0
     else
-        log_message "Both interfaces loss > $THRESHOLD%. Switching to main routing table."
+        log_message "Both interfaces loss > $SW_THRESHOLD%. Switching to main routing table."
         delete_routes
         default_route=$(ip -4 -oneline route show default 0.0.0.0/0)
         default_route_interface=$(echo "$default_route" | grep -oP 'dev \K\S+')
