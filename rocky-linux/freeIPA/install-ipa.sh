@@ -125,17 +125,20 @@ install_primary_server() {
     # Automatically suggest realm from the domain.
     DEFAULT_REALM=$(echo "${DOMAIN}" | tr '[:lower:]' '[:upper:]')
     read_value "Enter the FreeIPA realm name" "$DEFAULT_REALM" REALM
-    read_value "Enter the hostname for this server" "ipa01.${DOMAIN}" HOSTNAME
+    read_value "Enter the hostname for this server" "ipa01" HOSTNAME
     read_value "Enter the Directory Manager password: " "" DIRSRV_PASSWORD
     read_value "Enter the IPA 'admin' user password: " "" ADMIN_PASSWORD
     read_value "Enter the Freeradius client secret" "secret123" RADIUS_SECRET
+
+    # remove domain part if provided in hostname
+    HOSTNAME=${HOSTNAME%%.*}
 
     # 2. Confirmation step before proceeding
     echo ""
     echo "------------ Installation Summary ------------"
     printf "%-40s: %s\n" "Domain" "${DOMAIN}"
     printf "%-40s: %s\n" "Realm" "${REALM}"
-    printf "%-40s: %s\n" "Hostname" "${HOSTNAME}"
+    printf "%-40s: %s\n" "Hostname" "${HOSTNAME}.${DOMAIN}"
     printf "%-40s: %s\n" "Directory Manager Password" "${DIRSRV_PASSWORD}"
     printf "%-40s: %s\n" "IPA 'admin' Password" "${ADMIN_PASSWORD}"
     printf "%-40s: %s\n" "Freeradius client secret" "${RADIUS_SECRET}"
@@ -152,33 +155,46 @@ install_primary_server() {
     check_and_install_packages "bind" "bind-dyndb-ldap" "ipa-server" "ipa-server-dns" "freeipa-server-trust-ad" "freeradius" "freeradius-ldap" "freeradius-krb5" "freeradius-utils"
 
     # 4. Perform a pre-installation check
-    echo "Checking hostname and DNS configuration..."
-    if [[ "$(hostname -f)" != "$HOSTNAME" ]]; then
-        echo "Warning: Current hostname ($(hostname -f)) does not match the provided hostname ($HOSTNAME)."
-        echo "Please ensure /etc/hosts and DNS are configured correctly before proceeding."
-        read -p "Press Enter to continue..."
+	echo "\n o Update local host names ${HOSTNAME}"
+    sudo  hostnamectl set-hostname $HOSTNAME.$DOMAIN
+ 
+    # Extract the primary network interface's IP address
+    PRIMARY_IP=$(ip -4 addr show "$PRIMARY_INTERFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1)
+    if [[ -z "$PRIMARY_IP" ]]; then
+        echo "Error: Could not determine the IP address for $PRIMARY_INTERFACE." >&2
+        exit 1
     fi
 
-    # 5. Generate an unattended answer file for a clean install.
-    echo "Creating unattended answer file for FreeIPA installation..."
-    cat > /tmp/ipa-answers.txt <<EOF
-[global]
-domain_name=${DOMAIN}
-realm_name=${REALM}
-hostname=${HOSTNAME}
-dirsrv_password=${DIRSRV_PASSWORD}
-admin_password=${ADMIN_PASSWORD}
-EOF
+    # Update /etc/hosts with the new hostname and IP
+    echo "Updating /etc/hosts with $PRIMARY_IP $HOSTNAME.$DOMAIN..."
+    sed -i "/[[:space:]]$HOSTNAME\.$DOMAIN/d" /etc/hosts
+    echo "$PRIMARY_IP    $HOSTNAME.$DOMAIN $HOSTNAME" >> /etc/hosts
+    hostnamectl set-hostname "$HOSTNAME.$DOMAIN"
 
-    # 6. Run the FreeIPA server installation in unattended mode.
+    # Ensure the firewall is running and configure it.
+    echo "Configuring the firewall..."
+    systemctl enable --now firewalld
+    firewall-cmd -q --permanent --add-service={ntp,dns,freeipa-ldap,freeipa-ldaps,freeipa-replication,freeipa-trust,radius}
+    firewall-cmd -q --reload
+
+    # 5. Run the FreeIPA server installation in unattended mode.
     echo "Starting FreeIPA server installation. This may take a while..."
-    ipa-server-install --unattended --no-ntp --unattended-file=/tmp/ipa-answers.txt --force-ntp-server-sync
-    rm /tmp/ipa-answers.txt
-
+    ipa-server-install\
+            --ds-password=$DIRSRV_PASSWORD \
+            --admin-password=$ADMIN_PASSWORD \
+            --ip-address=$PRIMARY_IP \
+            --domain=$PRIMARY_IP\
+            --setup-adtrust\
+            --realm=${REALM^^}\
+            --hostname="$HOSTNAME.$DOMAIN" \
+            --setup-dns \
+            --mkhomedir \
+            --allow-zone-overlap  \
+            --auto-reverse \
+            --auto-forwarders \
+            --unattended
+    
     echo "FreeIPA server installation complete."
-    echo "Now configuring FreeRADIUS for MS-CHAPv2 authentication..."
-
-    configure_radius_for_nt_hash
 }
 
 # Function to configure FreeRADIUS for use with ipaNTHash.
