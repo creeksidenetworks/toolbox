@@ -27,18 +27,43 @@ fi
 
 # --- Helper Functions ---
 
-# Function to read a password securely without echoing it to the console.
-read_password() {
-    local prompt_text=$1
-    local password_var=$2
-    unset "$password_var"
-    while read -r -s -p "$prompt_text" password; do
-        if [[ -z "$password" ]]; then
-            echo
-            echo "Password cannot be empty. Please try again."
+# Function to read a value.
+PROMPT_LENGTH=52
+format_prompt() {
+    local title=$1
+    local default_value=$2
+    
+    if [[ -n "$default_value" ]]; then
+        l2=${#default_value}
+        l1=$((PROMPT_LENGTH-3-l2))
+        printf "%-${l1}s [%${l2}s]" "$title" "$default_value"
+    else
+        printf "%-${PROMPT_LENGTH}s" "$title"
+    fi
+}
+
+read_value() {
+    local title=$1
+    local default_value=$2
+    local return_var=$3
+    unset "$return_var"
+    
+    # get formated prompt text
+    local prompt_text
+
+    prompt_text=$(format_prompt "$title" "$default_value")
+
+    while read -p "${prompt_text}: " value; do
+        if [[ -z "$value" ]]; then
+            if [[ -n "$default_value" ]]; then
+                eval "$return_var=\"\$default_value\""
+                break
+            else
+                echo "Error: This value cannot be empty." >&2
+                continue
+            fi
         else
-            printf "\n"
-            eval "$password_var=\"\$password\""
+            eval "$return_var=\"\$value\""
             break
         fi
     done
@@ -77,41 +102,44 @@ check_static_ip() {
         exit 1
     fi
 
-    IP_METHOD=$(nmcli -g IP4.METHOD device show "$PRIMARY_INTERFACE" 2>/dev/null || true)
-    
-    if [[ "$IP_METHOD" != "manual" ]]; then
-        echo "Warning: The primary network interface ($PRIMARY_INTERFACE) does not have a static IPv4 address." >&2
+    # Check for the existence of a configured IPv4 address and if it is dynamic.
+    if ip addr show "$PRIMARY_INTERFACE" | grep -q "inet .*dynamic"; then
+        echo "Warning: A dynamic IPv4 address was detected on the primary network interface ($PRIMARY_INTERFACE)." >&2
         echo "A static IP is required for a stable FreeIPA installation." >&2
         echo "Please reconfigure your network interface and re-run this script." >&2
         exit 1
     fi
 
     echo "Static IPv4 address detected on $PRIMARY_INTERFACE. Proceeding with installation."
+    echo ""
 }
 
 # Function to install the FreeIPA primary server.
 install_primary_server() {
-    echo "--- Primary Server Installation ---"
+
+    printf "\n-------- Primary Server Installation ---------\n"
 
     # 1. Prompt for user inputs
-    read -p "Enter the FreeIPA domain name (e.g., example.com): " DOMAIN
+    read_value  "Enter the FreeIPA domain name (e.g., example.com)" "" DOMAIN
     
     # Automatically suggest realm from the domain.
     DEFAULT_REALM=$(echo "${DOMAIN}" | tr '[:lower:]' '[:upper:]')
-    read -p "Enter the FreeIPA realm name [default: ${DEFAULT_REALM}]: " REALM
-    REALM="${REALM:-$DEFAULT_REALM}"
-
-    read -p "Enter the hostname for this server (e.g., ipa01.${DOMAIN}): " HOSTNAME
-    read_password "Enter the Directory Manager password: " DIRSRV_PASSWORD
-    read_password "Enter the IPA 'admin' user password: " ADMIN_PASSWORD
+    read_value "Enter the FreeIPA realm name" "$DEFAULT_REALM" REALM
+    read_value "Enter the hostname for this server" "ipa01.${DOMAIN}" HOSTNAME
+    read_value "Enter the Directory Manager password: " "" DIRSRV_PASSWORD
+    read_value "Enter the IPA 'admin' user password: " "" ADMIN_PASSWORD
+    read_value "Enter the Freeradius client secret" "secret123" RADIUS_SECRET
 
     # 2. Confirmation step before proceeding
     echo ""
-    echo "--- Installation Summary ---"
-    echo "Domain: ${DOMAIN}"
-    echo "Realm: ${REALM}"
-    echo "Hostname: ${HOSTNAME}"
-    echo "----------------------------"
+    echo "------------ Installation Summary ------------"
+    printf "%-40s: %s\n" "Domain" "${DOMAIN}"
+    printf "%-40s: %s\n" "Realm" "${REALM}"
+    printf "%-40s: %s\n" "Hostname" "${HOSTNAME}"
+    printf "%-40s: %s\n" "Directory Manager Password" "${DIRSRV_PASSWORD}"
+    printf "%-40s: %s\n" "IPA 'admin' Password" "${ADMIN_PASSWORD}"
+    printf "%-40s: %s\n" "Freeradius client secret" "${RADIUS_SECRET}"
+    echo "----------------------------------------------"
     read -p "Do you want to proceed with the installation? (y/n): " PROCEED
     if [[ ! "$PROCEED" =~ ^[Yy]$ ]]; then
         echo "Installation aborted by user."
