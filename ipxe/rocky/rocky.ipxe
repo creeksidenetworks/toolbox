@@ -19,32 +19,52 @@ chain ${base_url}/boot.ipxe
 
 :rocky8
 set version 8
-goto desktop_menu
+goto desktop_light
 
 :rocky9
 set version 9
-goto desktop_menu
+goto desktop_light
 
 :rocky10
 set version 10
-goto desktop_menu
+goto desktop_full
 
-:desktop_menu
+:desktop_light
 menu Choose Desktop Environment
 item --gap -- --------------------------------------------------------------------------
-item mini     Minimal
-item desktop     Desktop
+item mini     None
+item xfce     Xfce
+item mate     Mate
 item --gap -- --------------------------------------------------------------------------
 item version_menu     Back to Version Selection
 item --gap -- --------------------------------------------------------------------------
 choose desktop && goto ${desktop}
 
+:desktop_full
+menu Choose Desktop Environment
+item --gap -- --------------------------------------------------------------------------
+item mini     None
+item kde      KDE Workspace
+item --gap -- --------------------------------------------------------------------------
+item version_menu     Back to Version Selection
+item --gap -- --------------------------------------------------------------------------
+choose desktop && goto ${desktop}
+
+
 :mini
-set install_type mini
+set desktop_type mini
 goto partition_menu
 
-:desktop
-set install_type desktop
+:xfce
+set desktop_type xfce
+goto partition_menu
+
+:mate
+set desktop_type mate
+goto partition_menu
+
+:kde
+set desktop_type kde
 goto partition_menu
 
 :partition_menu
@@ -72,7 +92,7 @@ item global   US - Official Rocky Server
 item china    CN - Nanjing University Mirror
 item uk       UK - Kent University Mirror
 item --gap -- --------------------------------------------------------------------------
-item partition_menu     Back to Desktop Selection
+item partition_menu     Back to Partition Selection
 item --gap -- --------------------------------------------------------------------------
 choose region && goto ${region}
 
@@ -92,6 +112,6 @@ set region uk
 goto launch
 
 :launch
-kernel ${base-rocky-url}/${version}/BaseOS/x86_64/os/images/pxeboot/vmlinuz initrd=initrd.img inst.repo=${base-rocky-url}/${version}/BaseOS/x86_64/os inst.ks=${base_url}/rocky/rocky.ks desktop=${install_type} region=${region} partition=${partition_mode}
+kernel ${base-rocky-url}/${version}/BaseOS/x86_64/os/images/pxeboot/vmlinuz initrd=initrd.img inst.repo=${base-rocky-url}/${version}/BaseOS/x86_64/os inst.ks=${base_url}/rocky/rocky.ks desktop=${desktop_type} region=${region} partition=${partition_mode}
 initrd ${base-rocky-url}/${version}/BaseOS/x86_64/os/images/pxeboot/initrd.img
 boot
