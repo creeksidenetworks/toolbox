@@ -163,8 +163,8 @@ echo "%wheel	ALL=(ALL)	NOPASSWD: ALL" > /etc/sudoers.d/nopasswd
 # Update Rocky and EPEL repository baseurls to use the provided ${baseurl}
 case $region in
     "china")
-        baseos_url="http://mirror.nju.edu.cn/rocky/rockylinux"
-        epel_url="http://mirror.nju.edu.cn/rocky/epel"
+        baseos_url="http://mirror.nju.edu.cn/rocky"
+        epel_url="http://mirror.nju.edu.cn/epel"
         ;;
     "uk")
         baseos_url="http://rockylinux.mirrorservice.org/pub/rocky"
@@ -221,12 +221,18 @@ dnf install -y cyrus-sasl cyrus-sasl-plain cyrus-sasl-ldap bc nmap-ncat p7zip p7
 mylog  "Install development tools" 
 dnf groupinstall "Development tools" -y
 
-if [ $desktop = "desktop" ]; then
+if [ $desktop = "xfce" ]; then
 
     # install xfce desktop
     mylog  "Install XFCE desktop" 
     dnf groupinstall -y "Xfce"
 
+
+    # enable xfce as default desktop
+    echo "xfce-session" > tee /etc/skel/.Xclients
+    chmod 755 /etc/skel/.Xclients
+
+elif [ $desktop = "mate" ]; then
     # install mate desktop
     mylog  "Install mate desktop" 
     dnf install -y NetworkManager-adsl NetworkManager-bluetooth NetworkManager-libreswan-gnome NetworkManager-openvpn-gnome 
@@ -239,15 +245,17 @@ if [ $desktop = "desktop" ]; then
     dnf install -y mate-menus mate-menus-preferences-category-menu mate-notification-daemon mate-panel mate-polkit mate-power-manager mate-screensaver 
     dnf install -y mate-screenshot mate-search-tool mate-session-manager mate-settings-daemon mate-system-log mate-system-monitor mate-terminal mate-themes 
     dnf install -y mate-user-admin mate-user-guide mozo network-manager-applet nm-connection-editor pluma seahorse seahorse-caja 
-    dnf install -y xdg-user-dirs-gtk slick-greeter-mate gnome-terminal lightdm-settings rxvt-unicode 
+    dnf install -y xdg-user-dirs-gtk slick-greeter-mate  
 
-    # Update lightdm configuration 
-    #   Disable user login list
-    #   User default session to be mate
-    #   Only use sessions under /usr/share/xsessions
-    sed -i -E "s%^([[:space:]]*)#?([[:space:]]*)user-session=.*$%user-session=xfce%" /etc/lightdm/lightdm.conf
-    sed -i -E "s%^([[:space:]]*)#?([[:space:]]*)greeter-hide-users=.*$%greeter-hide-users=true%" /etc/lightdm/lightdm.conf
+    # enable xfce as default desktop
+    echo "mate-session" > tee /etc/skel/.Xclients
+    chmod 755 /etc/skel/.Xclients
+elif [ $desktop = "kde" ]; then 
+    dnf group install "KDE Plasma Workspaces" -y
+    dnf install gdm -y
+fi
 
+if [ $desktop = "xfce" ] || [ $desktop = "mate" ]; then
     # Remove other sessions than allowed to use
     ALLOWED_SESSIONS=("mate" "xfce")
 
@@ -262,15 +270,22 @@ if [ $desktop = "desktop" ]; then
         fi
     done
 
+    # install lightdm
+    dnf install -y lightdm lightdm-settings 
+
+    # Update lightdm configuration 
+    #   Disable user login list
+    #   User default session to be mate
+    #   Only use sessions under /usr/share/xsessions
+    sed -i -E "s%^([[:space:]]*)#?([[:space:]]*)user-session=.*$%user-session=xfce%" /etc/lightdm/lightdm.conf
+    sed -i -E "s%^([[:space:]]*)#?([[:space:]]*)greeter-hide-users=.*$%greeter-hide-users=true%" /etc/lightdm/lightdm.conf
+
+    systemctl disable gdm
+    systemctl enable lightdm
+fi
 
 
-    # start GUI
-    systemctl isolate graphical.target
-    systemctl set-default graphical.target
-    ln -fs '/usr/lib/systemd/system/graphical.target' '/etc/systemd/system/default.target'
-    # enable mate as default desktop
-    echo "mate-session" > tee /etc/skel/.Xclients
-    chmod 755 /etc/skel/.Xclients
+if [ $desktop != "mini" ]; then
 
     # Disable reboot and power off from desktop
     mkdir -p /etc/polkit-1/rules.d
@@ -302,9 +317,14 @@ if [ $desktop = "desktop" ]; then
     Comment=Disable DPMS
     " > /etc/xdg/autostart/disable-dpms.desktop
 
+    # enable GUI
+    systemctl set-default graphical.target
 
     # install desktop applications
     mylog  "Install misc desktop applications" 
+
+    dnf install -y gnome-terminal rxvt-unicode
+
     echo "
 [ivoarch-Tilix]
 name=Copr repo for Tilix owned by ivoarch
