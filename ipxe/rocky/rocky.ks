@@ -160,6 +160,11 @@ done
 # disable sudo password requirement
 echo "%wheel	ALL=(ALL)	NOPASSWD: ALL" > /etc/sudoers.d/nopasswd
 
+# Find the NetworkManager configuration file that was created
+# The file will likely be named after the persistent interface (e.g., ifcfg-enp1s0)
+# This command renames the connection to "eth0" and links it to the eth0 device.
+nmcli connection modify "System eth0" connection.id "eth0" connection.interface-name "eth0"
+
 # Update Rocky and EPEL repository baseurls to use the provided ${baseurl}
 case $region in
     "china")
@@ -253,6 +258,12 @@ elif [ $desktop = "mate" ]; then
 elif [ $desktop = "kde" ]; then 
     dnf group install "KDE Plasma Workspaces" -y
     dnf install gdm -y
+    systemctl enable gdm
+elif [ $desktop = "gnome" ]; then 
+    dnf group install "Server with GUI" -y
+    dnf install gdm -y
+    systemctl enable gdm    
+    systemctl start gdm    
 fi
 
 if [ $desktop = "xfce" ] || [ $desktop = "mate" ]; then
@@ -282,6 +293,7 @@ if [ $desktop = "xfce" ] || [ $desktop = "mate" ]; then
 
     systemctl disable gdm
     systemctl enable lightdm
+    systemctl start lightdm
 fi
 
 

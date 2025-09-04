@@ -26,24 +26,36 @@ packagecloud.io
 fedorainfracloud.org
 packages.endpointdev.com
 
-# vscode
-packages.microsoft.com
-vscode.download.pr.microsoft.com
-
 # China mirrors
 mirrors.ustc.edu.cn
 mirrors.aliyun.com
 mirrors.tuna.tsinghua.edu.cn
+mirror.nju.edu.cn
+
+# UK mirrors
+.mirrorservice.org
 
 # docker
-#.quay.io
-#.docker.com
-#.containerd.io
-#.docker.io
-#.gcr.io
-#.ghcr.io
-#.k8s.gcr.io
-#.k8s.io
-#.mcr.microsoft.com
-#.docker.elastic.co
-#.nvcr.io
+.quay.io
+.docker.com
+.containerd.io
+.docker.io
+.gcr.io
+.ghcr.io
+.k8s.gcr.io
+.k8s.io
+.mcr.microsoft.com
+.docker.elastic.co
+.nvcr.io
+
+# vscode
+.vscode-cdn.net
+.visualstudio.com
+.azureedge.net
+.azurewebsites.net
+.gallerycdn.vsassets.io
+.github.com
+.githubusercontent.com
+packages.microsoft.com
+vscode.download.pr.microsoft.com
+

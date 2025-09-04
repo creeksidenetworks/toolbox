@@ -44,6 +44,7 @@ choose desktop && goto ${desktop}
 menu Choose Desktop Environment
 item --gap -- --------------------------------------------------------------------------
 item mini     None
+item gnome    Gnome
 item kde      KDE Workspace
 item --gap -- --------------------------------------------------------------------------
 item version_menu     Back to Version Selection
@@ -61,6 +62,10 @@ goto partition_menu
 
 :mate
 set desktop_type mate
+goto partition_menu
+
+:gnome
+set desktop_type gnome
 goto partition_menu
 
 :kde
