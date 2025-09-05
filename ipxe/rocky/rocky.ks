@@ -224,7 +224,7 @@ dnf install -y ed tcpdump wget nfs-utils cifs-utils samba-client tree xterm net-
 dnf install -y openldap-clients sssd realmd oddjob oddjob-mkhomedir adcli 
 dnf install -y samba-common samba-common-tools krb5-workstation openldap-clients iperf3 rsnapshot zip 
 dnf install -y nnzip ftp autofs zsh ksh tcsh ansible cabextract fontconfig 
-dnf install -y nedit htop tar traceroute mtr pwgen sssd realmd zsh ksh tcsh
+dnf install -y nedit htop tar traceroute mtr pwgen sssd realmd zsh ksh tcsh git
 dnf install -y cyrus-sasl cyrus-sasl-plain cyrus-sasl-ldap bc nmap-ncat p7zip p7zip-plugins unrar 
 
 # install development tools
