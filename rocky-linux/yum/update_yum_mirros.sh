@@ -6,9 +6,11 @@
 # --- Prefined Mirror Regions ---
 # Format: "Name|Rocky_Base_URL|EPEL_Base_URL"
 # Use \$releasever and \$basearch as variables for DNF.
+
 declare -a mirrors=(
     "Global|https://dl.rockylinux.org/pub/rocky|http://dl.fedoraproject.org/pub/epel"
-    "China (USTC)|https://mirrors.ustc.edu.cn/rocky|https://mirrors.ustc.edu.cn/epel"
+    "China (USTC)|http://mirror.nju.edu.cn/rocky|http://mirror.nju.edu.cn/epel"
+    "UK |http://rockylinux.mirrorservice.org/pub/rocky|https://www.mirrorservice.org/pub/epel"
     # To add more regions, simply add a new line in the same format.
     # Example: "Another_Region|...|..."
 )
