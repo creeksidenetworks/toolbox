@@ -163,7 +163,12 @@ echo "%wheel	ALL=(ALL)	NOPASSWD: ALL" > /etc/sudoers.d/nopasswd
 # Find the NetworkManager configuration file that was created
 # The file will likely be named after the persistent interface (e.g., ifcfg-enp1s0)
 # This command renames the connection to "eth0" and links it to the eth0 device.
-nmcli connection modify "System eth0" connection.id "eth0" connection.interface-name "eth0"
+#nmcli connection modify "System eth0" connection.id "eth0" connection.interface-name "eth0"
+
+nmcli -t -f NAME,TYPE connection show --active | grep 'ethernet' | while read line; do
+    NAME=$(echo "$line" | cut -d: -f1)
+    nmcli connection modify "$NAME" connection.autoconnect yes
+done
 
 # Update Rocky and EPEL repository baseurls to use the provided ${baseurl}
 case $region in
