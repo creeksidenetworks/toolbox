@@ -37,3 +37,11 @@ set firewall modify PBR rule 110 action modify
 set firewall modify PBR rule 110 description 'Smart split traffic'
 set firewall modify PBR rule 110 destination group address-group LIBERTY_ADDRESS_GRP
 set firewall modify PBR rule 110 modify table 100
+
+set system task-scheduler task dnsamsq-update crontab-spec '0 0 * * 1'
+set system task-scheduler task dnsamsq-update executable path /config/user-data/gfw/bin/update_dnsmasq_rulesets.sh
+set system task-scheduler task gfw-update executable arguments ''
+set system task-scheduler task gfw-update executable path /config/user-data/gfw/bin/gfw_peer_update.sh
+set system task-scheduler task gfw-update interval 2m
+set system task-scheduler task wg-update executable path /config/user-data/wireguard/bin/wg_peer_update.sh
+set system task-scheduler task wg-update interval 2m
