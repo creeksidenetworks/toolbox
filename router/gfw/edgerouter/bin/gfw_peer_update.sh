@@ -18,9 +18,10 @@ parse_args() {
     GFW_ROUTING_TABLE="100"
     PRIMARY_IF="wg252"
     SECONDARY_IF="wg253"
+    BACKUP_IF=""
 
     SUBJECT="$NAS_NAME"
-    while getopts ":p:s:t:c:" opt; do
+    while getopts ":p:s:t:c:b:" opt; do
         case $opt in
             c)
                 PING_COUNT="$OPTARG"
@@ -35,8 +36,11 @@ parse_args() {
             s)
                 SECONDARY_IF="$OPTARG"
                 ;;
+            b)  
+                BACKUP_IF="$OPTARG"
+                ;;
             \?)
-                echo "Usage: $0 [-p <primary i/f>] [-s <secondary if>] [-p <target ping test IP>] [-c <ping counts>]"
+                echo "Usage: $0 [-p <primary i/f>] [-s <secondary if>] [-b <backup if>] [-p <target ping test IP>] [-c <ping counts>]"
                 exit 1
                 ;;
         esac
@@ -105,21 +109,32 @@ main() {
     TMP_DIR=$(mktemp -d)
     PRIMARY_RESULT_FILE="$TMP_DIR/primary_ping_result.txt"
     SECONDARY_RESULT_FILE="$TMP_DIR/secondary_ping_result.txt"
+    BACKUP_RESULT_FILE="$TMP_DIR/backup_ping_result.txt"
 
     # Print message indicating start of pings
-    echo "$(date '+%Y-%m-%d %H:%M:%S') Ping test: ${PRIMARY_IF}, ${SECONDARY_IF}."
+    if [ -n "$BACKUP_IF" ]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') Ping test: ${PRIMARY_IF}, ${SECONDARY_IF}, ${BACKUP_IF}."
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') Ping test: ${PRIMARY_IF}, ${SECONDARY_IF}."
+    fi  
 
     # Ping from each interface in the background and store the result files
     ping_from_interface "$PRIMARY_IF" "$PRIMARY_RESULT_FILE" &
     ping_from_interface "$SECONDARY_IF" "$SECONDARY_RESULT_FILE" &
+    ping_from_interface "$BACKUP_IF" "$BACKUP_RESULT_FILE" &
 
     # Wait for all background jobs to complete
     wait
 
     PRIMARY_LOSS=$(get_loss_rate "$PRIMARY_RESULT_FILE")
     SECONDARY_LOSS=$(get_loss_rate "$SECONDARY_RESULT_FILE")
+    BACKUP_LOSS=$(get_loss_rate "$BACKUP_RESULT_FILE")
 
-    echo "Ping results: $PRIMARY_IF: $PRIMARY_LOSS%, $SECONDARY_IF: $SECONDARY_LOSS%"
+    if [ -n "$BACKUP_IF" ]; then
+        echo "Ping results: $PRIMARY_IF: $PRIMARY_LOSS%, $SECONDARY_IF: $SECONDARY_LOSS%, $BACKUP_IF: $BACKUP_LOSS%"
+    else
+        echo "Ping results: $PRIMARY_IF: $PRIMARY_LOSS%, $SECONDARY_IF: $SECONDARY_LOSS%"
+    fi
 
     # Get current interface
     CURRENT_IF=$(sudo ip -4 -oneline route show table "$GFW_ROUTING_TABLE" | grep -o "dev.*" | awk '{print $2}')
@@ -129,9 +144,13 @@ main() {
     # Make the interface switch decision by following rules
     if [ "$PRIMARY_LOSS" -gt "$LOSS_THRESHOLD" ] && [ "$SECONDARY_LOSS" -gt "$LOSS_THRESHOLD" ]; then
         # If both interfaces are down, then switch to default route
-        NEXT_IF="$DEFAULT_IF"
-    elif [ "$CURRENT_IF" = "$DEFAULT_IF" ] ; then
-        # Switch from loss to best interface
+        if [ -n "$BACKUP_IF" ] && [ "$BACKUP_LOSS" -le "$LOSS_THRESHOLD" ]; then
+            NEXT_IF="$BACKUP_IF"
+        else
+            NEXT_IF="$DEFAULT_IF"
+        fi
+    elif [ "$CURRENT_IF" = "$DEFAULT_IF" ] || [ -z "$CURRENT_IF" ] || [ "$CURRENT_IF" = "$BACKUP_IF" ]; then
+        # Switch from loss or backup interface to best interface
         if [ "$PRIMARY_LOSS" -le "$SECONDARY_LOSS" ]; then
             NEXT_IF="$PRIMARY_IF"
         else
@@ -163,6 +182,12 @@ main() {
         delete_routes
         sudo ip route replace default dev "$SECONDARY_IF" table "$GFW_ROUTING_TABLE"
         sudo ip route replace "$PING_TARGET_IP" dev "$SECONDARY_IF"
+        clean_and_exit 0
+    elif [ "$NEXT_IF" = "$BACKUP_IF" ]; then
+        log_message "Switching to $BACKUP_IF ($BACKUP_LOSS%)."
+        delete_routes
+        sudo ip route replace default dev "$BACKUP_IF" table "$GFW_ROUTING_TABLE"
+        sudo ip route replace "$PING_TARGET_IP" dev "$BACKUP_IF"
         clean_and_exit 0
     else
         log_message "Both interfaces loss > $SW_THRESHOLD%. Switching to main routing table."
