@@ -3,6 +3,8 @@
 # This script will decide the best tunnel for jailbreak based on ping result
 # for EdgeOS & VyOS 1.3.x
 
+export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+
 # Routing table to update
 GFW_ROUTING_TABLE="100"
 # Log file path
@@ -10,6 +12,11 @@ LOG_FILE="/var/log/gfw.log"
 # interface switch decision threshold
 SW_THRESHOLD="10"
 LOSS_THRESHOLD="20"
+
+if [ ! -f "$LOG_FILE" ]; then
+    sudo touch "$LOG_FILE"
+fi
+
 
 # Function to parse command line arguments
 parse_args() {
@@ -170,22 +177,18 @@ main() {
 
     if [ "$NEXT_IF" = "$CURRENT_IF" ]; then
         echo "Stay with $CURRENT_IF"
-        clean_and_exit 0
     elif [ "$NEXT_IF" = "$PRIMARY_IF" ]; then
         delete_routes
         sudo ip route replace default dev "$PRIMARY_IF" table "$GFW_ROUTING_TABLE"
         sudo ip route replace "$PING_TARGET_IP" dev "$PRIMARY_IF"
-        clean_and_exit 0
     elif [ "$NEXT_IF" = "$SECONDARY_IF" ]; then
         delete_routes
         sudo ip route replace default dev "$SECONDARY_IF" table "$GFW_ROUTING_TABLE"
         sudo ip route replace "$PING_TARGET_IP" dev "$SECONDARY_IF"
-        clean_and_exit 0
     elif [ "$NEXT_IF" = "$BACKUP_IF" ]; then
         delete_routes
         sudo ip route replace default dev "$BACKUP_IF" table "$GFW_ROUTING_TABLE"
         sudo ip route replace "$PING_TARGET_IP" dev "$BACKUP_IF"
-        clean_and_exit 0
     else
         delete_routes
         default_route=$(ip -4 -oneline route show default 0.0.0.0/0)
@@ -194,7 +197,6 @@ main() {
         new_route="$new_route $(echo "$default_route" | grep -o "dev.*" | awk '{print $1 " " $2}')"
         sudo ip route replace default $new_route table "$GFW_ROUTING_TABLE"
         sudo ip route replace "$PING_TARGET_IP" $new_route
-        clean_and_exit 0
     fi
 
     if [[ "$NEXT_IF" != "$CURRENT_IF" ]]; then
@@ -204,8 +206,9 @@ main() {
             log_message "Ping results: $PRIMARY_IF: $PRIMARY_LOSS%, $SECONDARY_IF: $SECONDARY_LOSS%"
         fi
         log_message "Interface switch decision: $CURRENT_IF -> $NEXT_IF"
-        log_message "Switching from $CURRENT_IF to $NEXT_IF."
     fi
+
+    clean_and_exit 0
 }
 
 main "$@"

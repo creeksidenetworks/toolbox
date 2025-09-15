@@ -6,6 +6,8 @@
 # Version:     1.0.0 (2024.08.12)
 # Author:      Jackson Tong
 
+export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+
 LOG_FILE="/var/log/gfw.log"
 LOG_CAT="gfw"
 IPSET_NAME=LIBERTY_ADDRESS_GRP
@@ -39,6 +41,10 @@ log_message() {
         *)
             log_level="info";;
     esac
+
+    if [ ! -f "$LOG_FILE" ]; then
+        sudo touch "$LOG_FILE"
+    fi
 
     printf "%-10s %s %s: %s\n" "$timestamp" "[$LOG_CAT]" "$log_level" "$message" | sudo tee -a "$LOG_FILE" # > /dev/null
     logger -t gfw -p $priority "$message"
