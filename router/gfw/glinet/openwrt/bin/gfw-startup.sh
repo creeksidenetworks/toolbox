@@ -211,6 +211,7 @@ start_service() {
 EOF
     chmod +x $SERVICE_FILE
     $SERVICE_FILE enable
+    $SERVICE_FILE start
     log "Creating startup script service file $SERVICE_FILE"
 else
     log "service file $SERVICE_FILE already exists"
