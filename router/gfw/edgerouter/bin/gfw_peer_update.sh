@@ -172,25 +172,21 @@ main() {
         echo "Stay with $CURRENT_IF"
         clean_and_exit 0
     elif [ "$NEXT_IF" = "$PRIMARY_IF" ]; then
-        log_message "Switching to $PRIMARY_IF ($PRIMARY_LOSS%)."
         delete_routes
         sudo ip route replace default dev "$PRIMARY_IF" table "$GFW_ROUTING_TABLE"
         sudo ip route replace "$PING_TARGET_IP" dev "$PRIMARY_IF"
         clean_and_exit 0
     elif [ "$NEXT_IF" = "$SECONDARY_IF" ]; then
-        log_message "Switching to $SECONDARY_IF ($SECONDARY_LOSS%)."
         delete_routes
         sudo ip route replace default dev "$SECONDARY_IF" table "$GFW_ROUTING_TABLE"
         sudo ip route replace "$PING_TARGET_IP" dev "$SECONDARY_IF"
         clean_and_exit 0
     elif [ "$NEXT_IF" = "$BACKUP_IF" ]; then
-        log_message "Switching to $BACKUP_IF ($BACKUP_LOSS%)."
         delete_routes
         sudo ip route replace default dev "$BACKUP_IF" table "$GFW_ROUTING_TABLE"
         sudo ip route replace "$PING_TARGET_IP" dev "$BACKUP_IF"
         clean_and_exit 0
     else
-        log_message "Both interfaces loss > $SW_THRESHOLD%. Switching to main routing table."
         delete_routes
         default_route=$(ip -4 -oneline route show default 0.0.0.0/0)
         default_route_interface=$(echo "$default_route" | grep -oP 'dev \K\S+')
@@ -199,6 +195,16 @@ main() {
         sudo ip route replace default $new_route table "$GFW_ROUTING_TABLE"
         sudo ip route replace "$PING_TARGET_IP" $new_route
         clean_and_exit 0
+    fi
+
+    if [[ "$NEXT_IF" != "$CURRENT_IF" ]]; then
+        if [ -n "$BACKUP_IF" ]; then
+            log_message "Ping results: $PRIMARY_IF: $PRIMARY_LOSS%, $SECONDARY_IF: $SECONDARY_LOSS%, $BACKUP_IF: $BACKUP_LOSS%"
+        else
+            log_message "Ping results: $PRIMARY_IF: $PRIMARY_LOSS%, $SECONDARY_IF: $SECONDARY_LOSS%"
+        fi
+        log_message "Interface switch decision: $CURRENT_IF -> $NEXT_IF"
+        log_message "Switching from $CURRENT_IF to $NEXT_IF."
     fi
 }
 

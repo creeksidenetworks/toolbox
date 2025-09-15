@@ -56,7 +56,7 @@ download_file() {
     local output_file=$2
 
     TMP_FILE=$(mktemp)
-    sudo curl -# -L $CURL_EXTARG -o $TMP_FILE $url
+    sudo curl -L $CURL_EXTARG -o $TMP_FILE $url
     if [ $? != 0 ]; then
         printf "\nFailed to fetch from $url.\n"
         rm -f $TMP_FILE
@@ -81,7 +81,7 @@ clean_and_exit(){
 main() {
     # get the output file path
     BASE_PATH=$(dirname $(dirname "$(readlink -f "$0")"))
-    CONF_PATH="$BASE_PATH/dnsmasq"
+    CONF_PATH="$BASE_PATH/conf"
 
     echo "Configure path: $CONF_PATH"
 
@@ -111,7 +111,7 @@ main() {
         CURL_EXTARG="--interface $INTERFACE"
     fi
 
-    echo "Downloading GfwList from github"
+    echo "Downloading GfwList from github from $INTERFACE"
     download_file "$BASE_URL" "$BASE64_FILE"
     #sudo curl -# -L $CURL_EXTARG -o "$BASE64_FILE" "$BASE_URL"
 
@@ -161,7 +161,7 @@ ipset=/\1/'$IPSET_NAME'#g' > $CONF_TMP_FILE
 
     # Download custom dnsmasq-ipset rules
     echo "Downloading custom dnsmasq-ipset rules"
-    download_file "https://raw.githubusercontent.com/creeksidenetworks/toolbox/refs/heads/main/router/gfw/dnsmasq/dnsmasq_gfw_custom.conf" "$BASE_PATH/dnsmasq/dnsmasq_gfw_custom.conf"
+    download_file "https://raw.githubusercontent.com/creeksidenetworks/toolbox/refs/heads/main/router/gfw/dnsmasq/dnsmasq_gfw_custom.conf" "${CONF_PATH}/dnsmasq_gfw_custom.conf"
 
     if [[ "$(uname -s)" == "Linux" ]]; then
         sudo systemctl restart dnsmasq
