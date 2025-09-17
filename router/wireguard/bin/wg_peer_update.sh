@@ -1,5 +1,8 @@
 
 #!/bin/bash
+# (c) 2022-2025 Creekside Networks LLC, Jackson Tong
+# This script will update the wireguard peer endpoint if the peer uses a FQDN
+# for EdgeOS & VyOS 1.3.4
 
 export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -169,8 +172,6 @@ main() {
             pubkey=$(echo "$line" | awk '{print $2}')
             description=$(echo "$line" | awk -F'"' '{print $2}')
             port=$(echo "$line" | awk '{print $NF}')
-
-            echo "Processing peer: Interface=$interface, PubKey=$pubkey, Description=$description, Port=$port"
 
             # Check if description is a valid FQDN
             if is_fqdn "$description"; then
