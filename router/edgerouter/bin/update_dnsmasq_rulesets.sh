@@ -63,7 +63,7 @@ download_file() {
 
     TMP_FILE=$(mktemp)
     sudo curl -L $CURL_EXTARG -o $TMP_FILE $url
-    if [ $? != 0 ]; then
+    if [ $? -ne 0 ]; then
         printf "\nFailed to fetch from $url.\n"
         rm -f $TMP_FILE
         clean_and_exit 2
@@ -84,12 +84,31 @@ clean_and_exit(){
     exit $1
 }
 
+# Function to parse command line arguments
+parse_args() {
+    while getopts ":o:" opt; do
+        case $opt in
+            o)
+                CONF_PATH="$OPTARG"
+                ;;
+            \?)
+                echo "Usage: $0 [-o <output path>]"
+                exit 1
+                ;;
+        esac
+    done
+    shift $((OPTIND -1))
+}
+
+
 main() {
     # get the output file path
     BASE_PATH=$(dirname $(dirname "$(readlink -f "$0")"))
     CONF_PATH="$BASE_PATH/conf"
 
-    echo "Configure path: $CONF_PATH"
+    parse_args "$@"
+
+    echo "Dnsmasq conf dir: $CONF_PATH"
 
     mkdir -p "$CONF_PATH"
 
@@ -119,12 +138,6 @@ main() {
 
     echo "Downloading GfwList from github from $INTERFACE"
     download_file "$BASE_URL" "$BASE64_FILE"
-    #sudo curl -# -L $CURL_EXTARG -o "$BASE64_FILE" "$BASE_URL"
-
-    #if [ $? != 0 ]; then
-    #    echo '\nFailed to fetch gfwlist.txt. Please check your Internet connection, and check TLS support for curl/wget.\n'
-    #    clean_and_exit 2
-    #fi
 
     $BASE64_DECODE "$BASE64_FILE" > $GFWLIST_FILE || ( echo 'Failed to decode gfwlist.txt. Quit.\n'; clean_and_exit 2 )
 
