@@ -26,28 +26,9 @@ SED_ERES='sed -r'
 # Function to log messages
 log_message() {
     local message=$1
-    local priority=$2
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
-    if [ -z $priority ]; then
-        priority=6
-    fi
-
-    case $priority in
-        "1" | "2")
-            log_level="crtc";;
-        "3" | "4" | "5")
-            log_level="warn";;
-        *)
-            log_level="info";;
-    esac
-
-    if [ ! -f "$LOG_FILE" ]; then
-        sudo touch "$LOG_FILE"
-    fi
-
-    printf "%-10s %s %s: %s\n" "$timestamp" "[$LOG_CAT]" "$log_level" "$message" | sudo tee -a "$LOG_FILE" # > /dev/null
-    logger -t gfw -p $priority "$message"
+    printf "%-10s %s %s: %s\n" "$timestamp" "$message" | sudo tee -a "$LOG_FILE" # > /dev/null
 
     # Ensure the log file does not exceed 1000 lines
     line_count=$(sudo wc -l < "$LOG_FILE")
@@ -63,8 +44,8 @@ download_file() {
 
     TMP_FILE=$(mktemp)
     sudo curl -L $CURL_EXTARG -o $TMP_FILE $url
-    if [ $? -ne 0 ]; then
-        printf "\nFailed to fetch from $url.\n"
+    if grep -q "404: Not Found" "$TMP_FILE"; then
+        log_message "Failed to fetch from $url."
         rm -f $TMP_FILE
         clean_and_exit 2
     else
@@ -180,7 +161,7 @@ ipset=/\1/'$IPSET_NAME'#g' > $CONF_TMP_FILE
 
     # Download custom dnsmasq-ipset rules
     echo "Downloading custom dnsmasq-ipset rules"
-    download_file "https://raw.githubusercontent.com/creeksidenetworks/toolbox/refs/heads/main/router/gfw/dnsmasq/dnsmasq_gfw_custom.conf" "${CONF_PATH}/dnsmasq_gfw_custom.conf"
+    download_file "https://raw.githubusercontent.com/creeksidenetworks/toolbox/refs/heads/main/gfw/dnsmasq/dnsmasq_gfw_custom.conf" "${CONF_PATH}/dnsmasq_gfw_custom.conf"
 
     if [[ "$(uname -s)" == "Linux" ]]; then
         sudo systemctl restart dnsmasq
