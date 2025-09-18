@@ -1,7 +1,7 @@
 #!/bin/bash
-# (c) 2022-2024 Creekside Networks LLC, Jackson Tong
+# (c) 2022-2025 Creekside Networks LLC, Jackson Tong
 # This script will decide the best tunnel for jailbreak based on ping result
-# for EdgeOS & VyOS 1.3.x
+# for EdgeOS & VyOS 1.3.4
 
 export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 
