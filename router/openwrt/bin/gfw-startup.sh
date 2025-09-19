@@ -5,13 +5,19 @@
 
 export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 
-sdw_backup="40.118.161.200"
-# Get the current script's path
-ROOT_PATH="$(dirname $(dirname "$(readlink -f "$0")"))"
+replace_conf_entry() {
+    key="$1"
+    value="$2"
+    conf_file="$3"
 
-CONF_PATH="${ROOT_PATH}/conf"
-SCRIPTS_DIR="${ROOT_PATH}/bin"
-LOG_FILE="/var/log/gfw.log"
+    if grep -q "^[[:space:]]*${key}[[:space:]]*=" "$conf_file"; then
+        # Update existing entry
+        sed -i "s|^[[:space:]]*${key}[[:space:]]*=.*|${key}=${value}|" "$conf_file"
+    else
+        # Append if missing
+        echo "${key}=${value}" >> "$conf_file"
+    fi
+}
 
 # Log function
 log() {
@@ -26,6 +32,14 @@ fi
 
 log "Starting gfw-startup script"
 
+# Get the current script's path
+ROOT_PATH="$(dirname $(dirname "$(readlink -f "$0")"))"
+sdw_backup="40.118.161.200"
+
+CONF_PATH="${ROOT_PATH}/conf"
+SCRIPTS_DIR="${ROOT_PATH}/bin"
+LOG_FILE="/var/log/gfw.log"
+SYSCTL_CONF="/etc/sysctl.conf"
 
 # Check if coreutils-base64 is installed
 if ! opkg list-installed | grep -q 'coreutils-base64'; then
@@ -42,6 +56,10 @@ if ! opkg list-installed | grep -q 'coreutils-base64'; then
 else
     echo "coreutils-base64 is already installed."
 fi
+
+# disable ipv6
+uci set network.globals.ula_prefix="disabled"
+uci commit network
 
 # restart dnsmasq if needed
 pid=$(sudo netstat -tulnp | grep 0.0.0.0:55353 | grep tcp | awk '{print $7}' | cut -d'/' -f1)
@@ -114,8 +132,16 @@ for config_file in ${ROOT_PATH}/conf/wireguard/*.conf; do
     log "$interface configured."
 done
 
-# Enable IP forwarding
-echo 1 > /proc/sys/net/ipv4/ip_forward
+#  Disable IPv6
+replace_conf_entry "net.ipv6.conf.all.disable_ipv6" 1 "$SYSCTL_CONF" 
+replace_conf_entry "net.ipv6.conf.default.disable_ipv6" 1 "$SYSCTL_CONF"
+
+# Enable IPv4 forwarding
+replace_conf_entry "net.ipv4.ip_forward" 1 "$SYSCTL_CONF"
+
+# Apply changes immediately
+/etc/init.d/sysctl restart
+
 
 # Add gooogle DNS routing and gfw routing table
 ip route add 8.8.8.8/32 dev $interface metric 100
