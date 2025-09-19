@@ -105,10 +105,8 @@ ipset=/\1/'$IPSET_NAME'#g' > $CONF_TMP_FILE
     log "gfwlist updated"
 
     # restart dnsmasq
-    pid=$(netstat -tulnp | grep 0.0.0.0:55353 | grep tcp | awk '{print $7}' | cut -d'/' -f1)
-
     log "restart dnsmasq with pid $pid"
-
+    pid=$(netstat -tulnp | grep 0.0.0.0:55353 | grep tcp | awk '{print $7}' | cut -d'/' -f1)
     kill -HUP $pid
 
     # Clean up
