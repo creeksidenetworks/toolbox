@@ -6,8 +6,9 @@
 # --- Configuration ---
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$(dirname "$ROOT_DIR")")"
-OPENWRT_DIR="${ROOT_DIR}/glinet/openwrt"
-KEY_FILE="$ROOT_DIR/sdwan/sdw-keys.txt"
+SDWAN_DIR="$(dirname "$ROOT_DIR")""/gfw/sdwan"
+OPENWRT_DIR="${ROOT_DIR}/openwrt"
+KEY_FILE="$SDWAN_DIR/conf/sdw-keys.txt"
 SDWCONF_DIR="${OPENWRT_DIR}/conf/wireguard"
 SCRIPTS_DIR="${OPENWRT_DIR}/bin"
 SSH_OPTIONS="-o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa"

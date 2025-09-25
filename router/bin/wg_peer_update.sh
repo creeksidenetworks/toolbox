@@ -1,5 +1,5 @@
 
-#!/bin/bash
+#!/bin/sh
 # (c) 2022-2025 Creekside Networks LLC, Jackson Tong
 # This script will update the wireguard peer endpoint if the peer uses a FQDN
 # for EdgeOS & VyOS 1.3.4
@@ -50,7 +50,9 @@ update_peer_endpoint() {
 
 # Detect OS type
 detect_os_type() {
-    if grep -q "VyOS" /etc/os-release 2>/dev/null; then
+    if [ -f /etc/openwrt_release ]; then
+        os="OpenWrt"
+    elif grep -q "VyOS" /etc/os-release 2>/dev/null; then
         os="VyOS"
         version=$(grep VERSION_ID /etc/os-release | awk -F'"' '{print $2}')
         if [[ "$version" != "1.3.4" ]]; then
@@ -106,7 +108,7 @@ EdgeOS_Parse_Wireguard() {
             }
             in_peer_block = 0;
         }
-    ' "$CONFIG_FILE"
+    ' "/config/config.boot"
 }
 
 # Function to parse WireGuard peers from VyOS config
@@ -142,17 +144,28 @@ VyOS_Parse_Wireguard() {
             }
             in_peer_block = 0;
         }
-    ' "$CONFIG_FILE"
+    ' "/config/config.boot"
+}
+
+
+OpenWrt_Parse_Wireguard() {
+    for id in 251 252 253; do
+        # Get the WireGuard interface config string
+        if [ -z $(uci show network | grep "wg${id}=") ]; then
+            continue
+        fi
+
+        # Get the peer public key, endpoint host, and endpoint port
+        pubkey=$(uci get network.@wireguard_wg${id}[0].public_key 2>/dev/null)
+        endpoint_host=$(uci get network.@wireguard_wg${id}[0].endpoint_host 2>/dev/null)
+        endpoint_port=$(uci get network.@wireguard_wg${id}[0].endpoint_port 2>/dev/null)
+
+        echo "wg${id}" "$pubkey" "\"$endpoint_host\"" "$endpoint_port"
+    done
 }
 
 main() {
     echo "Starting WireGuard peer update process..."
-
-    # Check if the file exists
-    if [[ ! -f "$CONFIG_FILE" ]]; then
-        echo "Error: Configuration file not found at $CONFIG_FILE"
-        exit 1
-    fi
 
     os=$(detect_os_type)
 
@@ -160,14 +173,16 @@ main() {
     if [[ "$os" == "EdgeOS" ]]; then
         echo "Detected OS: EdgeOS"
         peers=$(EdgeOS_Parse_Wireguard)
+    elif [[ "$os" == "OpenWrt" ]]; then
+        echo "Detected OS: OpenWrt"
+        peers=$(OpenWrt_Parse_Wireguard)
     else
         echo "Detected OS: VyOS"
         peers=$(VyOS_Parse_Wireguard)
     fi
 
-    if [[ ! -z "$peers" ]]; then
-        while IFS= read -r line; do
-
+    if [[ -n "$peers" ]]; then
+        echo "$peers" | while IFS= read -r line; do
             interface=$(echo "$line" | awk '{print $1}')
             pubkey=$(echo "$line" | awk '{print $2}')
             description=$(echo "$line" | awk -F'"' '{print $2}')
@@ -176,7 +191,7 @@ main() {
             # Check if description is a valid FQDN
             if is_fqdn "$description"; then
                 # Perform DNS lookup for FQDN
-                new_ip=$(host "$description" | grep 'has IPv4 address' | awk '{print $5}' )
+                new_ip=$(nslookup "$description" | awk '/^Address(:| [0-9]+:)? / { print $2 }' | head -n 1)
 
                 # get currnet IP
                 current_ip=$(sudo wg show "$interface" endpoints | grep "$pubkey" | awk '{print $2}' | awk -F':' '{print $1}')
@@ -189,7 +204,7 @@ main() {
                     echo "$interface" "-" "$pubkey" "$description:$port" "is currrent"
                 fi
             fi
-        done <<< "$peers"
+        done
     else
         echo "No WireGuard peers found in the configuration."
     fi

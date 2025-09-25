@@ -42,7 +42,8 @@ for config_file in ${ROOT_PATH}/conf/wireguard/*.conf; do
     # Check if hostname is a valid FQDN
     if echo "$hostname" | grep -Eq '^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$'; then
         # Lookup IPv4 address using host command
-        ipv4=$(nslookup "$hostname" | awk '/^Address 1:/ { print $3; exit }')
+        # Get all IPv4 addresses from nslookup, pick the first one
+        ipv4=$(nslookup "$hostname" | awk '/^Address(:| [0-9]+:)? / { print $2 }' | head -n 1)
         #echo $ipv4:$port
         if [ -z "$ipv4" ]; then
             log "Failed to resolve hostname: $hostname"
