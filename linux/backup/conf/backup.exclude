@@ -1,0 +1,13 @@
+@eaDir/
+log/
+Trash/
+.local/
+.cache/
+sock.*
+.mozilla/
+.vscode/
+.config/
+.ICEauthority/
+.dbus/
+.lsbatch/
+.emacs.d/
