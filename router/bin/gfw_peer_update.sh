@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # (c) 2022-2025 Creekside Networks LLC, Jackson Tong
 # This script will decide the best tunnel for jailbreak based on ping result
 # for EdgeOS & VyOS 1.3.4
@@ -92,7 +92,7 @@ delete_routes() {
 # Process the results
 get_loss_rate() {
     local result_file=$1
-    local loss=$(awk -F'[, ]' '/packet loss/{gsub("%","",$8); print $8}' "$result_file")
+    local loss=$(grep 'packet loss' "$result_file" | cut -d '%' -f 1 | awk '{print $NF}')
     if [ -z "$loss" ]; then
         echo "100"
     else
@@ -110,8 +110,6 @@ clean_and_exit(){
 
 main() {
     parse_args "$@"
-    # Array to hold the result files
-    result_files=()
 
     TMP_DIR=$(mktemp -d)
     PRIMARY_RESULT_FILE="$TMP_DIR/primary_ping_result.txt"
@@ -146,7 +144,7 @@ main() {
     # Get current interface
     CURRENT_IF=$(sudo ip -4 -oneline route show table "$GFW_ROUTING_TABLE" | grep -o "dev.*" | awk '{print $2}')
     DEFAULT_ROUTE=$(ip -4 -oneline route show default 0.0.0.0/0)
-    DEFAULT_IF=$(echo "$DEFAULT_ROUTE" | grep -oP 'dev \K\S+')
+    DEFAULT_IF=$(echo "$DEFAULT_ROUTE" | awk '/dev/ {for (i=1; i<=NF; i++) if ($i=="dev") {print $(i+1); exit}}')
 
     # Make the interface switch decision by following rules
     if [ "$PRIMARY_LOSS" -gt "$LOSS_THRESHOLD" ] && [ "$SECONDARY_LOSS" -gt "$LOSS_THRESHOLD" ]; then
@@ -192,7 +190,7 @@ main() {
     else
         delete_routes
         default_route=$(ip -4 -oneline route show default 0.0.0.0/0)
-        default_route_interface=$(echo "$default_route" | grep -oP 'dev \K\S+')
+        default_route_interface=$(echo "$default_route" | awk '/dev/ {for (i=1; i<=NF; i++) if ($i=="dev") {print $(i+1); exit}}')
         new_route=$(echo "$default_route" | grep -o "via.*" | awk '{print $1 " " $2}')
         new_route="$new_route $(echo "$default_route" | grep -o "dev.*" | awk '{print $1 " " $2}')"
         sudo ip route replace default $new_route table "$GFW_ROUTING_TABLE"
