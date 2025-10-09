@@ -1098,6 +1098,15 @@ main() {
             echo "IP rule already exists for LAN LIBERTY addresses (table 100)"
         fi
         
+        # Add iptables rule for guest network policy routing
+        echo "Adding iptables rule for guest network policy routing..."
+        if ! iptables -t mangle -C PREROUTING -i br-guest -j MARK --set-mark 0x64/0xff 2>/dev/null; then
+            iptables -t mangle -I PREROUTING -i br-guest -j MARK --set-mark 0x64/0xff
+            echo "iptables rule added for guest network policy routing"
+        else
+            echo "iptables rule already exists for guest network policy routing"
+        fi
+        
         # Add iptables rule for LAN LIBERTY_ADDRESS_GRP matching
         echo "Adding iptables rule for LAN LIBERTY address matching..."
         if ! iptables -t mangle -C PREROUTING -i br-lan -m set --match-set LIBERTY_ADDRESS_GRP dst -j MARK --set-mark 0x65/0xff 2>/dev/null; then
@@ -1138,6 +1147,11 @@ start() {
         ip rule add fwmark 0x65/0xff table 100 priority 101
     fi
     
+    # Add iptables rule for guest network policy routing
+    if ! iptables -t mangle -C PREROUTING -i br-guest -j MARK --set-mark 0x64/0xff 2>/dev/null; then
+        iptables -t mangle -I PREROUTING -i br-guest -j MARK --set-mark 0x64/0xff
+    fi
+    
     # Add iptables rule for LAN LIBERTY_ADDRESS_GRP matching
     if ! iptables -t mangle -C PREROUTING -i br-lan -m set --match-set LIBERTY_ADDRESS_GRP dst -j MARK --set-mark 0x65/0xff 2>/dev/null; then
         iptables -t mangle -I PREROUTING -i br-lan -m set --match-set LIBERTY_ADDRESS_GRP dst -j MARK --set-mark 0x65/0xff
@@ -1145,6 +1159,11 @@ start() {
 }
 
 stop() {
+    # Remove iptables rule for guest network policy routing
+    if iptables -t mangle -C PREROUTING -i br-guest -j MARK --set-mark 0x64/0xff 2>/dev/null; then
+        iptables -t mangle -D PREROUTING -i br-guest -j MARK --set-mark 0x64/0xff
+    fi
+    
     # Remove iptables rule for LAN LIBERTY_ADDRESS_GRP matching
     if iptables -t mangle -C PREROUTING -i br-lan -m set --match-set LIBERTY_ADDRESS_GRP dst -j MARK --set-mark 0x65/0xff 2>/dev/null; then
         iptables -t mangle -D PREROUTING -i br-lan -m set --match-set LIBERTY_ADDRESS_GRP dst -j MARK --set-mark 0x65/0xff
