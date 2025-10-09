@@ -68,6 +68,27 @@ detect_os_type() {
     echo "$os"
 }
 
+# dns lookup use different tools on different OS
+# host is available on EdgeOS
+# nslookup is available on VyOS and OpenWrt
+dns_lookup() {
+    local fqdn="$1"
+    local os="$2"
+
+    case "$os" in
+        "EdgeOS")
+            host -4 "$fqdn" | awk '/has IPv4 address/ { print $5; exit }'
+            ;;
+        "VyOS"|"OpenWrt")
+            nslookup "$fqdn" | awk '/^Address(:| [0-9]+:)? / { print $2 }' | head -n 1
+            ;;
+        *)
+            echo "Error: Unsupported OS for DNS lookup."
+            exit 1
+            ;;
+    esac
+}
+
 # Function to parse WireGuard peers from EdgeOS config
 EdgeOS_Parse_Wireguard() {
     awk '
@@ -191,7 +212,8 @@ main() {
             # Check if description is a valid FQDN
             if is_fqdn "$description"; then
                 # Perform DNS lookup for FQDN
-                new_ip=$(nslookup "$description" | awk '/^Address(:| [0-9]+:)? / { print $2 }' | head -n 1)
+                new_ip=$(dns_lookup "$description" "$os")
+                #new_ip=$(nslookup "$description" | awk '/^Address(:| [0-9]+:)? / { print $2 }' | head -n 1)
 
                 # get currnet IP
                 current_ip=$(sudo wg show "$interface" endpoints | grep "$pubkey" | awk '{print $2}' | awk -F':' '{print $1}')
