@@ -79,12 +79,8 @@ dns_lookup() {
         "EdgeOS")
             host -4 "$fqdn" | awk '/has IPv4 address/ { print $5; exit }'
             ;;
-        "VyOS"|"OpenWrt")
-            nslookup "$fqdn" | awk '/^Address(:| [0-9]+:)? / { print $2 }' | head -n 1
-            ;;
         *)
-            echo "Error: Unsupported OS for DNS lookup."
-            exit 1
+            nslookup "$fqdn" | awk '/^Address(:| [0-9]+:)? / { print $2 }' | head -n 1
             ;;
     esac
 }
