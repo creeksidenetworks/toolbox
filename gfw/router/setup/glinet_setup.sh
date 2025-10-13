@@ -750,39 +750,42 @@ main() {
         case "$UPDATE_WIFI_CHOICE" in
             [Yy]|[Yy][Ee][Ss])
                 UPDATE_WIFI=true
-                
-                # Prompt for new main WiFi credentials
+
+                # Prompt for new main WiFi credentials with defaults
                 echo
-                printf "Enter new main WiFi SSID: "
+                DEFAULT_MAIN_SSID="LibertySmart"
+                DEFAULT_MAIN_PASSWORD="Good2Great"
+                DEFAULT_GUEST_SSID="LibertyGlobal"
+                DEFAULT_GUEST_PASSWORD="Good2Great"
+
+                printf "Enter new main WiFi SSID [LibertySmart]: "
                 read NEW_MAIN_SSID
-                while [ -z "$NEW_MAIN_SSID" ]; do
-                    printf "SSID cannot be empty. Enter new main WiFi SSID: "
-                    read NEW_MAIN_SSID
-                done
-                
-                printf "Enter new main WiFi password (min 8 characters): "
+                [ -z "$NEW_MAIN_SSID" ] && NEW_MAIN_SSID="$DEFAULT_MAIN_SSID"
+
+                printf "Enter new main WiFi password (min 8 characters) [Good2Great]: "
                 read NEW_MAIN_PASSWORD
+                [ -z "$NEW_MAIN_PASSWORD" ] && NEW_MAIN_PASSWORD="$DEFAULT_MAIN_PASSWORD"
                 while [ ${#NEW_MAIN_PASSWORD} -lt 8 ]; do
-                    printf "Password too short. Enter password (min 8 characters): "
+                    printf "Password too short. Enter password (min 8 characters) [Good2Great]: "
                     read NEW_MAIN_PASSWORD
+                    [ -z "$NEW_MAIN_PASSWORD" ] && NEW_MAIN_PASSWORD="$DEFAULT_MAIN_PASSWORD"
                 done
-                
-                # Prompt for new global network credentials
+
+                # Prompt for new global network credentials with defaults
                 echo
-                printf "Enter new global network SSID: "
+                printf "Enter new global network SSID [LibertyGlobal]: "
                 read NEW_GUEST_SSID
-                while [ -z "$NEW_GUEST_SSID" ]; do
-                    printf "SSID cannot be empty. Enter new global network SSID: "
-                    read NEW_GUEST_SSID
-                done
-                
-                printf "Enter new global network password (min 8 characters): "
+                [ -z "$NEW_GUEST_SSID" ] && NEW_GUEST_SSID="$DEFAULT_GUEST_SSID"
+
+                printf "Enter new global network password (min 8 characters) [Good2Great]: "
                 read NEW_GUEST_PASSWORD
+                [ -z "$NEW_GUEST_PASSWORD" ] && NEW_GUEST_PASSWORD="$DEFAULT_GUEST_PASSWORD"
                 while [ ${#NEW_GUEST_PASSWORD} -lt 8 ]; do
-                    printf "Password too short. Enter password (min 8 characters): "
+                    printf "Password too short. Enter password (min 8 characters) [Good2Great]: "
                     read NEW_GUEST_PASSWORD
+                    [ -z "$NEW_GUEST_PASSWORD" ] && NEW_GUEST_PASSWORD="$DEFAULT_GUEST_PASSWORD"
                 done
-                
+
                 echo "WiFi configuration will be updated."
                 SUMMARY="${SUMMARY}  - WiFi networks: $NEW_MAIN_SSID (main), $NEW_GUEST_SSID (global)\n"
                 SUMMARY="${SUMMARY}  - 5GHz only, 20MHz bandwidth, 2.4GHz disabled\n"
@@ -1116,10 +1119,29 @@ main() {
             echo "iptables rule already exists for LAN LIBERTY address matching"
         fi
         
+        # Add static routes for policy routing
+        echo "Configuring routing tables..."
+        
+        # Add static route for 8.8.8.8 via wg251 in main table
+        if ! ip route show | grep -q "8.8.8.8 dev wg251"; then
+            ip route add 8.8.8.8 dev wg251
+            echo "Static route added: 8.8.8.8 via wg251"
+        else
+            echo "Static route already exists: 8.8.8.8 via wg251"
+        fi
+        
+        # Add default route in table 100 via wg251
+        if ! ip route show table 100 | grep -q "default dev wg251"; then
+            ip route add default dev wg251 table 100
+            echo "Default route added in table 100: default via wg251"
+        else
+            echo "Default route already exists in table 100 via wg251"
+        fi
+        
         # Make IP rules and iptables rules persistent by adding to a startup script
-        if [ ! -f "/etc/init.d/custom-routing" ]; then
+        if [ ! -f "/etc/init.d/gfw" ]; then
             echo "Creating custom routing startup script..."
-            cat > /etc/init.d/custom-routing << 'EOF'
+            cat > /etc/init.d/gfw << 'EOF'
 #!/bin/sh /etc/rc.common
 
 START=99
@@ -1156,6 +1178,17 @@ start() {
     if ! iptables -t mangle -C PREROUTING -i br-lan -m set --match-set LIBERTY_ADDRESS_GRP dst -j MARK --set-mark 0x65/0xff 2>/dev/null; then
         iptables -t mangle -I PREROUTING -i br-lan -m set --match-set LIBERTY_ADDRESS_GRP dst -j MARK --set-mark 0x65/0xff
     fi
+    
+    # Add static routes for policy routing
+    # Static route for 8.8.8.8 via wg251 in main table
+    if ! ip route show | grep -q "8.8.8.8 dev wg251"; then
+        ip route add 8.8.8.8 dev wg251
+    fi
+    
+    # Default route in table 100 via wg251
+    if ! ip route show table 100 | grep -q "default dev wg251"; then
+        ip route add default dev wg251 table 100
+    fi
 }
 
 stop() {
@@ -1184,15 +1217,26 @@ stop() {
         ip rule del fwmark 0x65/0xff table 100
     fi
     
+    # Remove static routes
+    # Remove static route for 8.8.8.8 via wg251
+    if ip route show | grep -q "8.8.8.8 dev wg251"; then
+        ip route del 8.8.8.8 dev wg251
+    fi
+    
+    # Remove default route in table 100
+    if ip route show table 100 | grep -q "default dev wg251"; then
+        ip route del default dev wg251 table 100
+    fi
+    
     # Remove LIBERTY_ADDRESS_GRP ipset (optional - comment out if you want to keep it)
     # if ipset list LIBERTY_ADDRESS_GRP >/dev/null 2>&1; then
     #     ipset destroy LIBERTY_ADDRESS_GRP
     # fi
 }
 EOF
-            chmod +x /etc/init.d/custom-routing
-            /etc/init.d/custom-routing enable
-            echo "Custom routing startup script created and enabled"
+            chmod +x /etc/init.d/gfw
+            /etc/init.d/gfw enable
+            echo "Gfw startup script created and enabled"
         fi
         
         echo "Network configuration completed successfully."
